@@ -1,0 +1,2 @@
+pyOpenSSL>=0.13
+pycrypto>=2.6
