@@ -14,9 +14,11 @@ it's under 350 lines.
 Script should be run as root on host with running nginx.
 Domain for which you request certificate should point to that host's IP and port
 80 should be available from outside.
-Script can generate all keys for you if not specified in command line.
+Script can generate all keys for you if you don't set them in command line.
 Keys are RSA with length of 2048 bytes.
 You can specify as many alternative domain names as you wish.
+The result PEM file is a **certificate chain** containing your signed
+certificate and letsencrypt signed chain. You can use it with nginx.
 
 ## Installation
 
@@ -54,6 +56,18 @@ Oct 12 23:42:23 Removing /etc/nginx/sites-enabled/letsencrypt and sending HUP to
 ```
 
 Certificate was generated into `/etc/ssl/private/letsencrypt-domain.pem`
+
+You can now configure nginx to use it:
+```
+server {
+  listen 443;
+  ssl on;
+  ssl_certificate /etc/ssl/private/letsencrypt-domain.pem;
+  ssl_certificate_key /etc/ssl/private/letsencrypt-domain.key;
+  ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+  ...
+```
+
 To renew it simply rerun the command! You can put it in cron, but don't forget
 about letsencrypt [rate limits](https://letsencrypt.org/docs/rate-limits/).
 
