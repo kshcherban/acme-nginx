@@ -22,6 +22,7 @@ except ImportError:
 # Default constants
 CA = "https://acme-v01.api.letsencrypt.org"
 TOS = "https://letsencrypt.org/documents/LE-SA-v1.1.1-August-1-2016.pdf"
+CHAIN = "https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem"
 
 
 def nginx_challenge(domain, token, thumbprint, vhost_conf):
@@ -192,7 +193,7 @@ def set_arguments():
             '-o',
             '--output',
             dest='cert_path',
-            type=argparse.FileType('w'),
+            type=str,
             default='/etc/ssl/private/letsencrypt-domain.pem',
             help='certificate path, default: /etc/ssl/private/letsencrypt.pem')
     parser.add_argument(
@@ -297,10 +298,8 @@ def main():
                 resp = urlopen(challenge['uri'])
                 challenge_status = json.loads(resp.read().decode('utf8'))
             except IOError as e:
-                _log(
-                        "Error checking challenge: {0} {1}"
-                        .format(e.code, json.loads(e.read().decode('utf8'))),
-                        1)
+                _log("Error checking challenge: {0} {1}"
+                     .format(e.code, json.loads(e.read().decode('utf8'))), 1)
             if challenge_status['status'] == "pending":
                 time.sleep(2)
             elif challenge_status['status'] == "valid":
@@ -321,12 +320,22 @@ def main():
     if code != 201:
         _log("Error signing certificate: {0} {1}".format(code, result), 1)
     _log('Certificate signed!')
-    _log('Writing result file in {0}'.format(args.cert_path.name))
-    args.cert_path.write(
-        """-----BEGIN CERTIFICATE-----\n{0}\n-----END CERTIFICATE-----\n"""
-        .format("\n".join(
-            textwrap.wrap(base64.b64encode(result).decode('utf8'), 64))))
-    args.cert_path.close()
+    try:
+        _log('Getting chain from {0}'.format(CHAIN))
+        resp = urlopen(CHAIN)
+        chain_str = resp.read()
+    except Exception as e:
+        _log('Error getting chain: {0} {1}'.format(type(e).__name__, e), 1)
+    _log('Writing result file in {0}'.format(args.cert_path))
+    try:
+        with open(args.cert_path, 'w') as fd:
+            fd.write(
+                '''-----BEGIN CERTIFICATE-----\n{0}\n-----END CERTIFICATE-----\n'''
+                .format('\n'.join(textwrap.wrap(
+                    base64.b64encode(result).decode('utf8'), 64))))
+            fd.write(chain_str)
+    except Exception as e:
+        _log('Error writing cert: {0} {1}'.format(type(e).__name__, e), 1)
     _log('Removing {0} and sending HUP to nginx'.format(args.vhost))
     os.remove(args.vhost)
     os.kill(nginx_pid, 1)
