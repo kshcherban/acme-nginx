@@ -3,11 +3,11 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='letsencrypt-nginx',
+    name='acme-nginx',
     version='0.0.1',
     author=u'Konstantin Shcherban',
     packages = find_packages(),
-    url='https://github.com/kshcherban/letsencrypt-nginx',
+    url='https://github.com/kshcherban/acme-nginx',
     license='GPL v3',
     description='A simple client/tool for Let\'s Encrypt or any ACME server that issues SSL certificates.',
     long_description=open("README.md").read(),
@@ -15,7 +15,7 @@ setup(
     install_requires=open("requirements.txt").read().split("\n"),
     entry_points={
         'console_scripts': [
-            'letsencrypt-nginx = letsencrypt_nginx.client:main',
+            'acme-nginx = acme_nginx.client:main',
         ]
     }
 )

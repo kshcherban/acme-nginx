@@ -1,4 +1,4 @@
-# letsencrypt-nginx
+# acme-nginx
 
 ## Description
 
@@ -22,8 +22,17 @@ certificate and letsencrypt signed chain. You can use it with nginx.
 
 ## Installation
 
+### Python way
+
 ```
 python setup.py install
+```
+
+### Debian way
+
+```
+sudo apt-get install -y python-openssl python-crypto
+sudo python setup.py install
 ```
 
 ## Usage
@@ -32,7 +41,7 @@ Simplest scenario: you have neither letsencrypt [account key](https://letsencryp
 certificate for example.com and www.example.com
 
 ```
-sudo letsencrypt-nginx -d example.com -d www.example.com
+sudo acme-nginx -d example.com -d www.example.com
 ```
 
 You will see output similar to this:
@@ -75,7 +84,7 @@ about letsencrypt [rate limits](https://letsencrypt.org/docs/rate-limits/).
 
 More complicated scenario: you have both account, domain keys and custom virtual host
 ```
-sudo letsencrypt-nginx \
+sudo acme-nginx \
     -k /path/to/account.key \
     --domain-private-key /path/to/domain.key \
     --virtual-host /etc/nginx/sites-enabled/customvhost \
