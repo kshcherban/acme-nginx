@@ -324,6 +324,8 @@ def main():
         _log('Getting chain from {0}'.format(CHAIN))
         resp = urlopen(CHAIN)
         chain_str = resp.read()
+        if chain_str.decode:
+            chain_str = chain_str.decode('UTF-8')
     except Exception as e:
         _log('Error getting chain: {0} {1}'.format(type(e).__name__, e), 1)
     _log('Writing result file in {0}'.format(args.cert_path))
