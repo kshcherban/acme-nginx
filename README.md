@@ -22,16 +22,28 @@ certificate and letsencrypt signed chain. You can use it with nginx.
 
 ## Installation
 
+Please be informed that the quickiest and easiest way of installation is to use your OS
+installation way because Python way includes compilation of dependencies that
+may take much time and CPU resources and may require you to install all build
+dependencies.
+
 ### Python way
 
 ```
 python setup.py install
 ```
 
-### Debian way
+### Debian/Ubuntu way
 
 ```
 sudo apt-get install -y python-openssl python-crypto
+sudo python setup.py install
+```
+
+### CentOS/RedHat/Fedora way
+
+```
+sudo yum install -y pyOpenSSL python-crypto
 sudo python setup.py install
 ```
 
