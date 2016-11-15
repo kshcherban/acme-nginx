@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='acme-nginx',
-    version='0.0.1',
+    version='0.0.2',
     author=u'Konstantin Shcherban',
     packages = find_packages(),
     url='https://github.com/kshcherban/acme-nginx',

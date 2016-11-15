@@ -19,8 +19,8 @@ except ImportError:
     from urllib2 import urlopen  # Python 2
 
 
-# Default constants
 CA = "https://acme-v01.api.letsencrypt.org"
+#CA = "https://acme-staging.api.letsencrypt.org"
 TOS = "https://letsencrypt.org/documents/LE-SA-v1.1.1-August-1-2016.pdf"
 CHAIN = "https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem"
 
@@ -45,17 +45,17 @@ server {{
     listen 80;
     server_name {domain};
     location /.well-known/acme-challenge/ {{
-        alias {alias};
+        alias {alias}/;
         try_files $uri =404;
     }}
 }}""".format(domain=domain, alias=alias)
     with open(vhost_conf, 'w') as fd:
         fd.write(vhost)
     # Get nginx master process id and send HUP to it
-    m_pid = min(map(int, check_output(['pidof', 'nginx']).split()))
+    m_pid = max(map(int, check_output('ps -o ppid= -C nginx'.split()).split()))
     os.kill(m_pid, 1)
     # Write challenge file
-    with open(alias + token, 'w') as fd:
+    with open('{0}/{1}'.format(alias, token), 'w') as fd:
         fd.write("{0}.{1}".format(token, thumbprint))
     return m_pid, alias
 
@@ -308,7 +308,7 @@ def main():
             else:
                 _log('{0} challenge did not pass: {1}'.format(
                     domain, challenge_status), 1)
-        os.remove(to_clean + token)
+        os.remove('{0}/{1}'.format(to_clean, token))
         os.removedirs(to_clean)
 # Sign and save certificate
     _log('Signing certificate')

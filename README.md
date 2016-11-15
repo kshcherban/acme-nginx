@@ -5,7 +5,7 @@
 This is [ACME](https://ietf-wg-acme.github.io/acme/) client implementation in
 Python based on https://github.com/diafygi/acme-tiny code.
 It's written in pure Python depends on pyOpenSSL and pycrypto
-and the only binary it calls is **pidof** to determine nginx master process id
+and the only binary it calls is **ps** to determine nginx master process id
 to send SIGHUP to it during challenge completion.
 
 As you may not trust this script feel free to check source code,
