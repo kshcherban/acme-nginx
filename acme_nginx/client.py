@@ -12,7 +12,7 @@ import tempfile
 import time
 import textwrap
 import sys
-from subprocess import check_output
+import subprocess
 try:
     from urllib.request import urlopen  # Python 3
 except ImportError:
@@ -23,6 +23,15 @@ CA = "https://acme-v01.api.letsencrypt.org"
 #CA = "https://acme-staging.api.letsencrypt.org"
 TOS = "https://letsencrypt.org/documents/LE-SA-v1.1.1-August-1-2016.pdf"
 CHAIN = "https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem"
+
+
+def reload_nginx():
+    """ Returns nginx master process id and sends HUP to it """
+    m_pid = max(map(int, subprocess.Popen(
+        'ps -o ppid= -C nginx'.split(),
+        stdout=subprocess.PIPE).communicate()[0].split()))
+    os.kill(m_pid, 1)
+    return m_pid
 
 
 def nginx_challenge(domain, token, thumbprint, vhost_conf):
@@ -51,9 +60,7 @@ server {{
 }}""".format(domain=domain, alias=alias)
     with open(vhost_conf, 'w') as fd:
         fd.write(vhost)
-    # Get nginx master process id and send HUP to it
-    m_pid = max(map(int, check_output('ps -o ppid= -C nginx'.split()).split()))
-    os.kill(m_pid, 1)
+    m_pid = reload_nginx()
     # Write challenge file
     with open('{0}/{1}'.format(alias, token), 'w') as fd:
         fd.write("{0}.{1}".format(token, thumbprint))
@@ -223,8 +230,7 @@ def main():
                 print('{0} removing {1}'
                       .format(time.strftime("%b %d %H:%M:%S"), args.vhost))
                 os.remove(args.vhost)
-                m_pid = min(map(int, check_output(['pidof', 'nginx']).split()))
-                os.kill(m_pid, 1)
+                reload_nginx()
             except:
                 pass
             sys.exit(1)
@@ -236,9 +242,7 @@ def main():
         domain_key = create_key(args.domain_key)
     except Exception as e:
         _log('Error creating key {0} {1}'.format(type(e).__name__, e), 1)
-# Create CSR based on domain key
     csr = create_csr(domain_key, args.domain)
-# Register new account
     _log('Trying to register account key')
     code, result = send_signed_request(
             CA + "/acme/new-reg",
@@ -310,7 +314,6 @@ def main():
                     domain, challenge_status), 1)
         os.remove('{0}/{1}'.format(to_clean, token))
         os.removedirs(to_clean)
-# Sign and save certificate
     _log('Signing certificate')
     code, result = send_signed_request(
             CA + "/acme/new-cert",
