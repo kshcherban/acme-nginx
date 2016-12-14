@@ -20,6 +20,8 @@ You can specify as many alternative domain names as you wish.
 The result PEM file is a **certificate chain** containing your signed
 certificate and letsencrypt signed chain. You can use it with nginx.
 
+Should work with Python >= 2.6
+
 ## Installation
 
 Please be informed that the quickiest and easiest way of installation is to use your OS
