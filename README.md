@@ -31,7 +31,15 @@ dependencies.
 
 ### Python way
 
+Automatically
 ```
+pip install acme-nginx
+```
+
+or manually
+```
+git clone https://github.com/kshcherban/acme-nginx
+cd acme-nginx
 python setup.py install
 ```
 
