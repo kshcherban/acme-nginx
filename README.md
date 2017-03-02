@@ -9,7 +9,7 @@ and the only binary it calls is **ps** to determine nginx master process id
 to send SIGHUP to it during challenge completion.
 
 As you may not trust this script feel free to check source code,
-it's under 350 lines.
+it's under 400 lines.
 
 Script should be run as root on host with running nginx.
 Domain for which you request certificate should point to that host's IP and port
@@ -112,4 +112,14 @@ sudo acme-nginx \
     --virtual-host /etc/nginx/sites-enabled/customvhost \
     -o /path/to/signed_certificate.pem \
     -d example.com -d www.example.com
+```
+
+## Renewal
+
+Personally i use following cronjob to renew certificates of my blog:
+
+```
+cat /etc/cron.d/renew-cert
+MAILTO=insider@prolinux.org
+12 11 10 * * root /usr/local/bin/acme-nginx -d prolinux.org -d www.prolinux.org >> /var/log/letsencrypt.log
 ```

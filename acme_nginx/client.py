@@ -1,4 +1,3 @@
-
 import argparse
 import OpenSSL
 import Crypto.PublicKey.RSA
@@ -60,11 +59,11 @@ server {{
 }}""".format(domain=domain, alias=alias)
     with open(vhost_conf, 'w') as fd:
         fd.write(vhost)
-    m_pid = reload_nginx()
+    reload_nginx()
     # Write challenge file
     with open('{0}/{1}'.format(alias, token), 'w') as fd:
         fd.write("{0}.{1}".format(token, thumbprint))
-    return m_pid, alias
+    return alias
 
 
 def create_key(key_path, key_type=OpenSSL.crypto.TYPE_RSA, bits=2048):
@@ -215,21 +214,37 @@ def set_arguments():
             '--virtual-host',
             dest='vhost',
             type=str,
-            default='/etc/nginx/sites-enabled/letsencrypt',
+            default='/etc/nginx/sites-enabled/0-letsencrypt',
             help=('path to nginx virtual host for challenge completion, '
-                  'default: /etc/nginx/sites-enabled/letsencrypt'))
+                  'default: /etc/nginx/sites-enabled/0-letsencrypt'))
+    parser.add_argument(
+            '--debug',
+            dest='debug',
+            action='store_true',
+            help=("don't delete intermideate files for debugging"))
     return parser.parse_args()
 
 
 def main():
 
+    def _cleanup(files, directory=None):
+        if not args.debug:
+            for f in files:
+                print('{0} removing {1}'
+                        .format(time.strftime("%b %d %H:%M:%S"), f))
+                os.remove(f)
+            if directory:
+                print('{0} removing {1}'
+                        .format(time.strftime("%b %d %H:%M:%S"), directory))
+                os.removedirs(directory)
+
     def _log(message, exit_with_error=False):
         print('{0} {1}'.format(time.strftime("%b %d %H:%M:%S"), message))
         if exit_with_error:
             try:
-                print('{0} removing {1}'
-                      .format(time.strftime("%b %d %H:%M:%S"), args.vhost))
-                os.remove(args.vhost)
+                _cleanup(
+                        [args.vhost, '{0}/{1}'.format(to_clean, token)],
+                        to_clean)
                 reload_nginx()
             except:
                 pass
@@ -280,11 +295,10 @@ def main():
         _log('Adding nginx virtual host and completing challenge')
         _log('Creating file {0}'.format(args.vhost))
         try:
-            nginx_pid, to_clean = nginx_challenge(
-                    domain, token, thumbprint, args.vhost)
+            to_clean = nginx_challenge(domain, token, thumbprint, args.vhost)
         except Exception as e:
             _log('Error adding virtual host {0} {1}'
-                 .format(type(e).__name__, e), 1)
+                    .format(type(e).__name__, e), 1)
         code, result = send_signed_request(
                 challenge['uri'],
                 {
@@ -312,8 +326,7 @@ def main():
             else:
                 _log('{0} challenge did not pass: {1}'.format(
                     domain, challenge_status), 1)
-        os.remove('{0}/{1}'.format(to_clean, token))
-        os.removedirs(to_clean)
+        _cleanup(['{0}/{1}'.format(to_clean, token)], to_clean)
     _log('Signing certificate')
     code, result = send_signed_request(
             CA + "/acme/new-cert",
@@ -341,9 +354,9 @@ def main():
             fd.write(chain_str)
     except Exception as e:
         _log('Error writing cert: {0} {1}'.format(type(e).__name__, e), 1)
-    _log('Removing {0} and sending HUP to nginx'.format(args.vhost))
-    os.remove(args.vhost)
-    os.kill(nginx_pid, 1)
+    _log('Sending HUP to nginx'.format(args.vhost))
+    _cleanup([args.vhost])
+    reload_nginx()
 
 
 if __name__ == "__main__":
