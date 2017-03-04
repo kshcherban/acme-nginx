@@ -236,7 +236,7 @@ def main():
             if directory:
                 print('{0} removing {1}'
                         .format(time.strftime("%b %d %H:%M:%S"), directory))
-                os.removedirs(directory)
+                os.rmdir(directory)
 
     def _log(message, exit_with_error=False):
         print('{0} {1}'.format(time.strftime("%b %d %H:%M:%S"), message))
