@@ -46,14 +46,14 @@ python setup.py install
 ### Debian/Ubuntu way
 
 ```
-sudo apt-get install -y python-openssl python-crypto
+sudo apt-get install -y python-openssl python-crypto python-setuptools
 sudo python setup.py install
 ```
 
 ### CentOS/RedHat/Fedora way
 
 ```
-sudo yum install -y pyOpenSSL python-crypto
+sudo yum install -y pyOpenSSL python-crypto python-setuptools
 sudo python setup.py install
 ```
 
