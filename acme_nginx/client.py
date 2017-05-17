@@ -68,7 +68,7 @@ server {{
 
 def create_key(key_path, key_type=OpenSSL.crypto.TYPE_RSA, bits=2048):
     """
-    Rerurns created private key and writes in into key_path
+    Returns created private key and writes in into key_path
     Params:
         key_path, str, writable path for key
         key_type, int, SSL key type
@@ -221,7 +221,7 @@ def set_arguments():
             '--debug',
             dest='debug',
             action='store_true',
-            help=("don't delete intermideate files for debugging"))
+            help=("don't delete intermediate files for debugging"))
     return parser.parse_args()
 
 
