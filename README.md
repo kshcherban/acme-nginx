@@ -33,7 +33,7 @@ dependencies.
 
 Automatically
 ```
-pip install acme-nginx
+pip3 install acme-nginx
 ```
 
 or manually
