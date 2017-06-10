@@ -59,6 +59,7 @@ server {{
 }}""".format(domain=domain, alias=alias)
     with open(vhost_conf, 'w') as fd:
         fd.write(vhost)
+    os.chmod(vhost_conf, 0o644)
     reload_nginx()
     # Write challenge file
     with open('{0}/{1}'.format(alias, token), 'w') as fd:
@@ -86,6 +87,8 @@ def create_key(key_path, key_type=OpenSSL.crypto.TYPE_RSA, bits=2048):
                 OpenSSL.crypto.FILETYPE_PEM, key)
         print('{0} Can not open key {1}, generating new'
               .format(time.strftime("%b %d %H:%M:%S"), key_path))
+        if not os.path.isdir(os.path.dirname(key_path)):
+            os.mkdir(os.path.dirname(key_path))
         with open(key_path, 'wb') as fd:
             fd.write(private_key)
         os.chmod(key_path, 0o400)
