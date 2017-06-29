@@ -2,7 +2,7 @@
 
 from setuptools import setup, find_packages
 
-p_version = '0.0.6'
+p_version = '0.0.7'
 
 setup(
     name = 'acme-nginx',

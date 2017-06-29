@@ -118,7 +118,7 @@ sudo acme-nginx \
 
 To debug please use `--debug` flag. With debug enabled all intermediate files
 will not be removed, so you can check `/etc/nginx/sites-enabled` for temporary
-virtual host configuration, by default it's `/etc/nginx/sites-enabled/0-letsencrypt`.
+virtual host configuration, by default it's `/etc/nginx/sites-enabled/0-letsencrypt.conf`.
 
 Execute `acme-nginx --help` to see all available flags and their default values.
 

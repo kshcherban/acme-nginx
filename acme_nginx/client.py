@@ -51,6 +51,7 @@ def nginx_challenge(domain, token, thumbprint, vhost_conf):
     vhost = """
 server {{
     listen 80;
+    listen [::]:80;
     server_name {domain};
     location /.well-known/acme-challenge/ {{
         alias {alias}/;
@@ -217,9 +218,9 @@ def set_arguments():
             '--virtual-host',
             dest='vhost',
             type=str,
-            default='/etc/nginx/sites-enabled/0-letsencrypt',
+            default='/etc/nginx/sites-enabled/0-letsencrypt.conf',
             help=('path to nginx virtual host for challenge completion, '
-                  'default: /etc/nginx/sites-enabled/0-letsencrypt'))
+                  'default: /etc/nginx/sites-enabled/0-letsencrypt.conf'))
     parser.add_argument(
             '--debug',
             dest='debug',
