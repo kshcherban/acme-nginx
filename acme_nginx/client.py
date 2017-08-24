@@ -29,6 +29,8 @@ def reload_nginx():
     m_pid = max(map(int, subprocess.Popen(
         'ps -o ppid= -C nginx'.split(),
         stdout=subprocess.PIPE).communicate()[0].split()))
+    print('{0} {1}'.format(time.strftime("%b %d %H:%M:%S"),
+        'Killing nginx process {0} with HUP'.format(m_pid)))
     os.kill(m_pid, 1)
     return m_pid
 
@@ -358,7 +360,6 @@ def main():
             fd.write(chain_str)
     except Exception as e:
         _log('Error writing cert: {0} {1}'.format(type(e).__name__, e), 1)
-    _log('Sending HUP to nginx'.format(args.vhost))
     _cleanup([args.vhost])
     reload_nginx()
 
