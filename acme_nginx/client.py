@@ -20,7 +20,7 @@ except ImportError:
 
 CA = "https://acme-v01.api.letsencrypt.org"
 #CA = "https://acme-staging.api.letsencrypt.org"
-TOS = "https://letsencrypt.org/documents/LE-SA-v1.1.1-August-1-2016.pdf"
+TOS = "https://letsencrypt.org/documents/LE-SA-v1.2-November-15-2017.pdf"
 CHAIN = "https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem"
 
 
