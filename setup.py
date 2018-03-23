@@ -22,6 +22,7 @@ setup(
     entry_points = {
         'console_scripts': [
             'acme-nginx = acme_nginx.client:main',
+            'acmev2-nginx = acme_nginx.clientv2:main',
         ]
     }
 )
