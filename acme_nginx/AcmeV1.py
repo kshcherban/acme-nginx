@@ -29,7 +29,7 @@ class AcmeV1(Acme):
         except Exception as e:
             self.log.error('creating key {0} {1}'.format(type(e).__name__, e))
             sys.exit(1)
-        self.log.info('trying to register account key')
+        self.log.info('trying to register acmev1 account')
         code, result, headers = self.send_signed_request(
             self.api_url + "/acme/new-reg",
             {
@@ -55,6 +55,7 @@ class AcmeV1(Acme):
             sys.exit(1)
         csr = self.create_csr()
         # Solve challenge
+        self.log.info('acmev1 http challenge')
         for domain in self.domains:
             self.log.info('requesting challenge')
             code, result, headers = self.send_signed_request(

@@ -32,7 +32,6 @@ class AcmeV2(Acme):
         except Exception as e:
             self.log.error('creating key {0} {1}'.format(type(e).__name__, e))
             sys.exit(1)
-        self.log.info('trying to register account key')
         directory = urlopen(Request(
             self.api_url,
             headers={"Content-Type": "application/jose+json"})
@@ -40,7 +39,7 @@ class AcmeV2(Acme):
         # That is needed later for order placement
         directory = json.loads(directory)
         directory['_kid'] = None
-        self.log.info('trying to register account key')
+        self.log.info('trying to register acmev2 account')
         code, result, headers = self.send_signed_request(
             directory['newAccount'],
             {"termsOfServiceAgreed": True},
@@ -67,7 +66,8 @@ class AcmeV2(Acme):
         Params:
             directory, dict, directory data from acme server
         """
-        self.log.info('prepare new order')
+        self.log.info('acmev2 http challenge')
+        self.log.info('preparing new order')
         order_payload = {
             "identifiers": [{"type": "dns", "value": d} for d in self.domains]
         }
@@ -131,6 +131,8 @@ class AcmeV2(Acme):
             csr = self.create_csr()
             code, result, headers = self.send_signed_request(
                 order['finalize'], {"csr": self._b64(csr)}, directory)
+            if self.debug:
+                self.log.debug('{0}, {1}, {2}'.format(code, result, headers))
             if code > 399:
                 self.log("error signing certificate: {0} {1}".format(code, result))
                 self._cleanup(
@@ -140,7 +142,7 @@ class AcmeV2(Acme):
                 )
             self.log.info('certificate signed!')
             self.log.info('downloading certificate')
-            certificate_pem = urlopen(order['certificate']).read()
+            certificate_pem = urlopen(json.loads(result)['certificate']).read()
             self.log.info('writing result file in {0}'.format(self.cert_path))
             try:
                 with open(self.cert_path, 'w') as fd:
