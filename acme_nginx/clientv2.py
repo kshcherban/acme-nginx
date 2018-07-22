@@ -33,7 +33,7 @@ def reload_nginx():
     return m_pid
 
 
-def nginx_challenge(domain, token, thumbprint, vhost_conf):
+def http_challenge(domain, token, thumbprint, vhost_conf):
     """
     Creates nginx virtual host for challenge solve
     Params:
@@ -240,6 +240,11 @@ def set_arguments():
             dest='debug',
             action='store_true',
             help=("don't delete intermediate files for debugging"))
+    parser.add_argument(
+            '--dns',
+            dest='dns',
+            action='store_true',
+            help=("pass dns challenge instead of nginx"))
     return parser.parse_args()
 
 
@@ -306,6 +311,8 @@ def main():
         auth = json.loads(urlopen(Request(url)).read().decode("utf8"))
         domain = auth['identifier']['value']
         _log('Verifying domain {0}'.format(domain))
+        if args.dns:
+            challenge = [c for c in auth['challenges'] if c['type'] == "dns-01"][0]
         challenge = [c for c in auth['challenges'] if c['type'] == "http-01"][0]
         token = re.sub(r"[^A-Za-z0-9_\-]", "_", challenge['token'])
         accountkey_json = json.dumps(
@@ -317,7 +324,7 @@ def main():
         _log('Adding nginx virtual host and completing challenge')
         _log('Creating file {0}'.format(args.vhost))
         try:
-            to_clean = nginx_challenge(domain, token, thumbprint, args.vhost)
+            to_clean = http_challenge(domain, token, thumbprint, args.vhost)
         except Exception as e:
             _log('Error adding virtual host {0} {1}'
                     .format(type(e).__name__, e), 1)

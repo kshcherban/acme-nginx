@@ -22,6 +22,21 @@ certificate and letsencrypt signed chain. You can use it with nginx.
 
 Should work with Python >= 2.6
 
+## ACME v2
+
+ACME v2 requires more logic so it's not as small as acme v1 script.
+
+ACME v2 is supported partially: only `http-01` and `dns-01` challenges.
+Check https://tools.ietf.org/html/draft-ietf-acme-acme-07#section-9.7.6
+
+To use new protocol, please call `acmev2-nginx` script.
+
+`http-01` challenge is passed exactly as in v1 protocol realisation.
+
+`dns-01` currently supports only Google Domains provider because my domain is managed.
+In case you want to add support of different DNS providers please provide PRs.
+
+
 ## Installation
 
 Please be informed that the quickiest and easiest way of installation is to use your OS
