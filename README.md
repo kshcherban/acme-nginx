@@ -15,10 +15,10 @@ Simple way to get SSL certificates for free.
 
 ## Features
 
-    * Supports both Python 2 and Python 3
-    * Works with both ACMEv1 and ACMEv2 protocols
-    * Can issue [wildcard certificates](https://en.wikipedia.org/wiki/Wildcard_certificate)!
-    * Easy to use and extend
+* Supports both Python 2 and Python 3
+* Works with both ACMEv1 and ACMEv2 protocols
+* Can issue [wildcard certificates](https://en.wikipedia.org/wiki/Wildcard_certificate)!
+* Easy to use and extend
 
 ## Description
 
