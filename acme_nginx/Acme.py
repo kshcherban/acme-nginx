@@ -229,7 +229,12 @@ server {{
             "signature": self._b64(signature)})
         try:
             resp = urlopen(Request(url, data=data.encode('utf8'), headers=request_headers))
-            return resp.getcode(), resp.read().decode('utf8'), resp.headers
+            resp_data = resp.read()
+            try:
+                resp_data = resp_data.decode('utf8')
+            except UnicodeDecodeError:
+                pass
+            return resp.getcode(), resp_data, resp.headers
         except Exception as e:
             return getattr(e, "code", None), \
                    getattr(e, "read", e.__str__)(), \
