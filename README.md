@@ -1,20 +1,41 @@
 # acme-nginx
 
+Simple way to get SSL certificates for free.
+
+## Table of Contents
+
+- [Features](#features)
+- [Description](#description)
+- [ACME v2](#acme-v2)
+- [ACME v1](#acme-v1)
+- [Installation](#installation)
+- [Usage](#usage)
+  * [Debug](#debug)
+  * [Renewal](#renewal)
+
+## Features
+
+    * Supports both Python 2 and Python 3
+    * Works with both ACMEv1 and ACMEv2 protocols
+    * Can issue [wildcard certificates](https://en.wikipedia.org/wiki/Wildcard_certificate)!
+    * Easy to use and extend
+
 ## Description
 
 This is [ACME](https://ietf-wg-acme.github.io/acme/) client implementation in
-Python based on https://github.com/diafygi/acme-tiny code.
+Python originally based on https://github.com/diafygi/acme-tiny code.
+Now completely different.
 It's written in pure Python depends on pyOpenSSL and pycrypto
 and the only binary it calls is **ps** to determine nginx master process id
-to send SIGHUP to it during challenge completion.
+to send `SIGHUP` to it during challenge completion.
 
 As you may not trust this script feel free to check source code,
-it's under 400 lines.
+it's under 800 lines.
 
-Script should be run as root on host with running nginx.
+Script should be run as root on host with running nginx server.
 Domain for which you request certificate should point to that host's IP and port
-80 should be available from outside.
-Script can generate all keys for you if you don't set them in command line.
+80 should be available from outside if you use HTTP challenge.
+Script can generate all keys for you if you don't set them with command line arguments.
 Keys are RSA with length of 2048 bytes.
 You can specify as many alternative domain names as you wish.
 The result PEM file is a **certificate chain** containing your signed
@@ -29,13 +50,26 @@ ACME v2 requires more logic so it's not as small as acme v1 script.
 ACME v2 is supported partially: only `http-01` and `dns-01` challenges.
 Check https://tools.ietf.org/html/draft-ietf-acme-acme-07#section-9.7.6
 
-To use new protocol, please call `acmev2-nginx` script.
+New protocol is used by default.
 
 `http-01` challenge is passed exactly as in v1 protocol realisation.
 
-`dns-01` currently supports only Google Domains provider because my domain is managed.
-In case you want to add support of different DNS providers please provide PRs.
+`dns-01` currently supports only DigitalOcean DNS provider. Technically nginx
+is not needed for this type of challenge but script still calls nginx reload
+because it assumes that you store certificates on the same server where you issue
+them.
 
+In case you want to add support of different DNS providers your contribution is 
+highly apprectiated.
+
+Wildcard certificates can not be issued with non-wildcard for the same domain.
+I.e. it's not possible to issue certificates for `*.example.com` and
+`www.example.com` at the same time.
+
+## ACME v1
+
+Still supported with flag `--acme-v1`.
+Only HTTP challenge is supported at the moment.
 
 ## Installation
 
@@ -118,6 +152,13 @@ To renew it simply rerun the command! You can put it in cron, but don't forget
 about letsencrypt [rate limits](https://letsencrypt.org/docs/rate-limits/).
 
 
+Wildcard certificate generation:
+```
+sudo su -
+export API_TOKEN=yourDigitalOceanApiToken
+acme-nginx --dns digitalocean -d '*.example.com'
+```
+
 
 More complicated scenario: you have both account, domain keys and custom virtual host
 ```
@@ -129,7 +170,7 @@ sudo acme-nginx \
     -d example.com -d www.example.com
 ```
 
-## Debug
+### Debug
 
 To debug please use `--debug` flag. With debug enabled all intermediate files
 will not be removed, so you can check `/etc/nginx/sites-enabled` for temporary
@@ -137,12 +178,12 @@ virtual host configuration, by default it's `/etc/nginx/sites-enabled/0-letsencr
 
 Execute `acme-nginx --help` to see all available flags and their default values.
 
-## Renewal
+### Renewal
 
-Personally i use following cronjob to renew certificates of my blog:
+Personally i use following cronjob to renew certificates of my blog. Here's contents
+of `/etc/cron.d/renew-cert`
 
 ```
-cat /etc/cron.d/renew-cert
 MAILTO=insider@prolinux.org
-12 11 10 * * root /usr/local/bin/acme-nginx -d prolinux.org -d www.prolinux.org >> /var/log/letsencrypt.log
+12 11 10 * * root timeout -k 600 -s 9 3600 /usr/local/bin/acme-nginx -d prolinux.org -d www.prolinux.org >> /var/log/letsencrypt.log 2>&1 || echo "Failed to renew certificate"
 ```
