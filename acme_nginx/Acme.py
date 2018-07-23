@@ -2,11 +2,13 @@ import base64
 import binascii
 import Crypto.PublicKey.RSA
 import json
+import hashlib
 import OpenSSL
 import os
 import subprocess
 import sys
 import tempfile
+import time
 try:
     from urllib.request import urlopen, Request  # Python 3
 except ImportError:
@@ -167,6 +169,14 @@ server {{
                 "n": self._b64(binascii.unhexlify(modulus.encode('utf8')))}}
         return header
 
+    def _thumbprint(self):
+        """ Returns account thumbprint """
+        accountkey_json = json.dumps(
+            self._jws()['jwk'],
+            sort_keys=True,
+            separators=(',', ':'))
+        return self._b64(hashlib.sha256(accountkey_json.encode('utf8')).digest())
+
     def _cleanup(self, files, directory=None, exit_with_error=False):
         if not self.debug:
             for f in files:
@@ -213,15 +223,33 @@ server {{
             protected["nonce"] = urlopen(self.api_url + "/directory").headers['Replay-Nonce']
         protected64 = self._b64(json.dumps(protected).encode('utf8'))
         signature = self._sign_message("{0}.{1}".format(protected64, payload64))
-
         data = json.dumps({
             "protected": protected64,
             "payload": payload64,
             "signature": self._b64(signature)})
         try:
             resp = urlopen(Request(url, data=data.encode('utf8'), headers=request_headers))
-            return resp.getcode(), resp.read(), resp.headers
+            return resp.getcode(), resp.read().decode('utf8'), resp.headers
         except Exception as e:
             return getattr(e, "code", None), \
                    getattr(e, "read", e.__str__)(), \
                    getattr(e, "headers", None)
+
+    def verify_challenge(self, url, domain):
+        """ Verify challenge for domain """
+        self.log.info('waiting for {0} challenge verification'.format(domain))
+        checks_count = 60
+        while True:
+            checks_count -= 1
+            challenge_status = json.loads(urlopen(url).read().decode('utf8'))
+            if challenge_status['status'] == "pending":
+                time.sleep(5)
+            elif challenge_status['status'] == "valid":
+                self.log.info('{0} verified!'.format(domain))
+                break
+            else:
+                self.log.error('{0} challenge did not pass: {1}'.format(domain, challenge_status))
+                sys.exit(1)
+            if checks_count <= 0:
+                self.log.error('reached waiting limit')
+                sys.exit(1)

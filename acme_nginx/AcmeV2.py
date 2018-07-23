@@ -2,12 +2,12 @@ import hashlib
 import json
 import re
 import sys
-import time
 try:
     from urllib.request import urlopen, Request  # Python 3
 except ImportError:
     from urllib2 import urlopen, Request  # Python 2
 from Acme import Acme
+from DigitalOcean import DigitalOcean
 
 
 class AcmeV2(Acme):
@@ -35,7 +35,7 @@ class AcmeV2(Acme):
         directory = urlopen(Request(
             self.api_url,
             headers={"Content-Type": "application/jose+json"})
-        ).read().decode("utf8")
+        ).read().decode('utf8')
         # That is needed later for order placement
         directory = json.loads(directory)
         directory['_kid'] = None
@@ -60,6 +60,28 @@ class AcmeV2(Acme):
             sys.exit(1)
         return directory
 
+    def sign_certificate(self, order, directory):
+        """ Sign certificate """
+        self.log.info('signing certificate')
+        csr = self.create_csr()
+        code, result, headers = self.send_signed_request(
+            order['finalize'], {"csr": self._b64(csr)}, directory)
+        self.log.debug('{0}, {1}, {2}'.format(code, result, headers))
+        if code > 399:
+            self.log.error("error signing certificate: {0} {1}".format(code, result))
+            self._reload_nginx()
+            sys.exit(1)
+        self.log.info('certificate signed!')
+        self.log.info('downloading certificate')
+        certificate_pem = urlopen(json.loads(result)['certificate']).read().decode('utf8')
+        self.log.info('writing result file in {0}'.format(self.cert_path))
+        try:
+            with open(self.cert_path, 'w') as fd:
+                fd.write(certificate_pem)
+        except Exception as e:
+            self.log.error('error writing cert: {0} {1}'.format(type(e).__name__, e))
+        self._reload_nginx()
+
     def solve_http_challenge(self, directory):
         """
         Solve HTTP challenge
@@ -68,27 +90,19 @@ class AcmeV2(Acme):
         """
         self.log.info('acmev2 http challenge')
         self.log.info('preparing new order')
-        order_payload = {
-            "identifiers": [{"type": "dns", "value": d} for d in self.domains]
-        }
+        order_payload = {"identifiers": [{"type": "dns", "value": d} for d in self.domains]}
         code, order, order_headers = self.send_signed_request(
             directory['newOrder'], order_payload, directory)
-        order = json.loads(order.decode("utf8"))
+        order = json.loads(order)
         self.log.info('order created')
         for url in order['authorizations']:
-            auth = json.loads(urlopen(url).read().decode("utf8"))
-            if self.debug:
-                self.log.debug(json.dumps(auth))
+            auth = json.loads(urlopen(url).read().decode('utf8'))
+            self.log.debug(json.dumps(auth))
             domain = auth['identifier']['value']
             self.log.info('verifying domain {0}'.format(domain))
             challenge = [c for c in auth['challenges'] if c['type'] == "http-01"][0]
             token = re.sub(r"[^A-Za-z0-9_\-]", "_", challenge['token'])
-            accountkey_json = json.dumps(
-                self._jws()['jwk'],
-                sort_keys=True,
-                separators=(',', ':'))
-            thumbprint = self._b64(
-                hashlib.sha256(accountkey_json.encode('utf8')).digest())
+            thumbprint = self._thumbprint()
             self.log.info('adding nginx virtual host and completing challenge')
             try:
                 challenge_dir = self.write_vhost()
@@ -96,6 +110,7 @@ class AcmeV2(Acme):
             except Exception as e:
                 self.log.error('error adding virtual host {0} {1}'.format(type(e).__name__, e))
                 sys.exit(1)
+            self.log.info('asking acme server to verify challenge')
             code, result, headers = self.send_signed_request(challenge['url'], {}, directory)
             if code > 399:
                 self.log.error("error triggering challenge: {0} {1}".format(code, result))
@@ -104,57 +119,77 @@ class AcmeV2(Acme):
                     directory=challenge_dir,
                     exit_with_error=True
                 )
-            self.log.info('waiting for challenge verification')
-            while True:
-                try:
-                    challenge_status = json.loads(urlopen(url).read().decode('utf8'))
-                except IOError as e:
-                    self.log.error("error checking challenge: {0} {1}".format(
-                        e.code, json.loads(e.read().decode('utf8'))))
-                    self._cleanup(
-                        ['{0}/{1}'.format(challenge_dir, token), self.vhost],
-                        directory=challenge_dir,
-                        exit_with_error=True
-                    )
-                if challenge_status['status'] == "pending":
-                    time.sleep(2)
-                elif challenge_status['status'] == "valid":
-                    self.log.info('{0} verified!'.format(domain))
-                    break
-                else:
-                    self.log.error('{0} challenge did not pass: {1}'.format(domain, challenge_status))
-            self._cleanup(
-                ['{0}/{1}'.format(challenge_dir, token)],
-                directory=challenge_dir
-            )
-            self.log.info('signing certificate')
-            csr = self.create_csr()
-            code, result, headers = self.send_signed_request(
-                order['finalize'], {"csr": self._b64(csr)}, directory)
-            if self.debug:
-                self.log.debug('{0}, {1}, {2}'.format(code, result, headers))
-            if code > 399:
-                self.log("error signing certificate: {0} {1}".format(code, result))
+            try:
+                self.verify_challenge(url, domain)
+            finally:
                 self._cleanup(
                     ['{0}/{1}'.format(challenge_dir, token), self.vhost],
-                    directory=challenge_dir,
-                    exit_with_error=True
+                    directory=challenge_dir
                 )
-            self.log.info('certificate signed!')
-            self.log.info('downloading certificate')
-            certificate_pem = urlopen(json.loads(result)['certificate']).read()
-            self.log.info('writing result file in {0}'.format(self.cert_path))
+                self._reload_nginx()
+        self.sign_certificate(order, directory)
+
+    def solve_dns_challenge(self, directory, client):
+        """
+        Solve DNS challenge
+        Params:
+            directory, dict, directory data from acme server
+            client, object, dns provider client implementation
+        """
+        self.log.info('acmev2 dns challenge')
+        self.log.info('preparing new order')
+        order_payload = {"identifiers": [{"type": "dns", "value": d} for d in self.domains]}
+        code, order, order_headers = self.send_signed_request(
+            directory['newOrder'], order_payload, directory)
+        order = json.loads(order)
+        self.log.info('order created')
+        self.log.debug(order)
+        for url in order['authorizations']:
+            auth = json.loads(urlopen(url).read().decode('utf8'))
+            self.log.debug(json.dumps(auth))
+            domain = auth['identifier']['value']
+            self.log.info('verifying domain {0}'.format(domain))
+            challenge = [c for c in auth['challenges'] if c['type'] == "dns-01"][0]
+            token = re.sub(r"[^A-Za-z0-9_\-]", "_", challenge['token'])
+            thumbprint = self._thumbprint()
+            keyauthorization = "{0}.{1}".format(token, thumbprint)
+            txt_record = self._b64(hashlib.sha256(keyauthorization.encode('utf8')).digest())
+            self.log.info('creating TXT dns record _acme-challenge.{0} IN TXT {1}'.format(domain, txt_record))
             try:
-                with open(self.cert_path, 'w') as fd:
-                    fd.write(certificate_pem)
+                record_id = client.create_record(
+                    domain=domain,
+                    name='_acme-challenge.{0}.'.format(domain.lstrip('*.').rstrip('.')),
+                    data=txt_record)
             except Exception as e:
-                self.log.error('error writing cert: {0} {1}'.format(type(e).__name__, e))
-            self._cleanup([self.vhost])
-            self._reload_nginx()
+                self.log.error('error creating dns record')
+                self.log.error(e)
+                sys.exit(1)
+            try:
+                self.log.info('asking acme server to verify challenge')
+                code, result, headers = self.send_signed_request(
+                    challenge['url'],
+                    {"keyAuthorization": keyauthorization},
+                    directory
+                )
+                if code > 399:
+                    self.log.error("error triggering challenge: {0} {1}".format(code, result))
+                    raise Exception(result)
+                self.verify_challenge(url, domain)
+            finally:
+                try:
+                    if not self.debug:
+                        self.log.info('delete dns record')
+                        client.delete_record(domain=domain, record_id=record_id)
+                except Exception as e:
+                    self.log.error('error deleting dns record')
+                    self.log.error(e)
+        self.sign_certificate(order, directory)
 
     def get_certificate(self):
         directory = self.register_account()
         if self.dns_provider:
-            self.log.warning('not implemented')
+            if self.dns_provider == 'digitalocean':
+                dns_client = DigitalOcean()
+            self.solve_dns_challenge(directory, dns_client)
         else:
             self.solve_http_challenge(directory)
