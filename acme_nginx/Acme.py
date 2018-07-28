@@ -262,15 +262,15 @@ server {{
             sys.exit(1)
 
     @staticmethod
-    def _get_challenge(auth, challenge_type):
+    def _get_challenge(challenges, challenge_type):
         """
         Return challenge from dict
         Params:
-            auth, dict, auth data structure from acme api
+            challenge, dict, challenge data structure from acme api
             challenge_type, str, challenge type
         Return:
             challenge key
         """
-        for c in auth['challenges']:
-            if c['type'] == challenge_type:
-                return c
+        for challenge in challenges:
+            if challenge['type'] == challenge_type:
+                return challenge

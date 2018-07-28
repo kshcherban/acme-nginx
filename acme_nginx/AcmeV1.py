@@ -60,7 +60,7 @@ class AcmeV1(Acme):
             if code != 201:
                 self.log.error('error requesting challenges: {0} {1}'.format(code, result))
                 sys.exit(1)
-            challenge = self._get_challenge(json.loads(result), "http-01")
+            challenge = self._get_challenge(json.loads(result)['challenges'], "http-01")
             token = re.sub(r"[^A-Za-z0-9_\-]", "_", challenge['token'])
             thumbprint = self._thumbprint()
             self.log.info('adding nginx virtual host and completing challenge')

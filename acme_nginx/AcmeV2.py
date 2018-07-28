@@ -97,7 +97,7 @@ class AcmeV2(Acme):
             self.log.debug(json.dumps(auth))
             domain = auth['identifier']['value']
             self.log.info('verifying domain {0}'.format(domain))
-            challenge = self._get_challenge(auth, "http-01")
+            challenge = self._get_challenge(auth['challenges'], "http-01")
             token = re.sub(r"[^A-Za-z0-9_\-]", "_", challenge['token'])
             thumbprint = self._thumbprint()
             self.log.info('adding nginx virtual host and completing challenge')
@@ -142,7 +142,7 @@ class AcmeV2(Acme):
             self.log.debug(json.dumps(auth))
             domain = auth['identifier']['value']
             self.log.info('verifying domain {0}'.format(domain))
-            challenge = self._get_challenge(auth, "dns-01")
+            challenge = self._get_challenge(auth['challenges'], "dns-01")
             token = re.sub(r"[^A-Za-z0-9_\-]", "_", challenge['token'])
             thumbprint = self._thumbprint()
             keyauthorization = "{0}.{1}".format(token, thumbprint)
