@@ -1,7 +1,5 @@
 import argparse
 import logging
-from AcmeV1 import AcmeV1
-from AcmeV2 import AcmeV2
 
 
 def set_arguments():
@@ -77,36 +75,28 @@ def main():
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=log_level)
     log = logging.getLogger('acme')
     if args.acmev1:
+        from AcmeV1 import AcmeV1 as Acme
         if args.staging:
             api_url = 'https://acme-staging.api.letsencrypt.org'
         else:
             api_url = 'https://acme-v01.api.letsencrypt.org'
-        acme = AcmeV1(
-            api_url=api_url,
-            logger=log,
-            domains=args.domain,
-            account_key=args.private_key,
-            domain_key=args.domain_key,
-            vhost=args.vhost,
-            cert_path=args.cert_path,
-            debug=args.debug
-        )
     else:
+        from AcmeV2 import AcmeV2 as Acme
         if args.staging:
             api_url = 'https://acme-staging-v02.api.letsencrypt.org/directory'
         else:
             api_url = 'https://acme-v02.api.letsencrypt.org/directory'
-        acme = AcmeV2(
-            api_url=api_url,
-            logger=log,
-            domains=args.domain,
-            account_key=args.private_key,
-            domain_key=args.domain_key,
-            vhost=args.vhost,
-            cert_path=args.cert_path,
-            debug=args.debug,
-            dns_provider=args.dns_provider
-        )
+    acme = Acme(
+        api_url=api_url,
+        logger=log,
+        domains=args.domain,
+        account_key=args.private_key,
+        domain_key=args.domain_key,
+        vhost=args.vhost,
+        cert_path=args.cert_path,
+        debug=args.debug,
+        dns_provider=args.dns_provider
+    )
     acme.get_certificate()
 
 

@@ -11,19 +11,11 @@ from DigitalOcean import DigitalOcean
 
 
 class AcmeV2(Acme):
-    def __init__(self, dns_provider=None, *args, **kwargs):
-        """
-        Params:
-            dns_provider, list, dns provider that is used for dns challenge
-        """
-        self.dns_provider = dns_provider
-        super(AcmeV2, self).__init__(*args, **kwargs)
-
     def register_account(self):
         """
         Generate new 2049 bit account key, domain key if not generated
         Register account key with ACME
-        Returns:
+        Return:
              dict, directory data from acme server
         """
         try:
@@ -32,18 +24,20 @@ class AcmeV2(Acme):
         except Exception as e:
             self.log.error('creating key {0} {1}'.format(type(e).__name__, e))
             sys.exit(1)
+        # directory is needed later for order placement
         directory = urlopen(Request(
             self.api_url,
             headers={"Content-Type": "application/jose+json"})
         ).read().decode('utf8')
-        # That is needed later for order placement
         directory = json.loads(directory)
         directory['_kid'] = None
         self.log.info('trying to register acmev2 account')
-        code, result, headers = self.send_signed_request(
-            directory['newAccount'],
-            {"termsOfServiceAgreed": True},
-            directory)
+        payload = {"termsOfServiceAgreed": True}
+        code, result, headers = self._send_signed_request(
+            url=directory['newAccount'],
+            payload=payload,
+            directory=directory
+        )
         if code == 201:
             self.log.info('registered!')
         elif code == 200:
@@ -60,12 +54,12 @@ class AcmeV2(Acme):
             sys.exit(1)
         return directory
 
-    def sign_certificate(self, order, directory):
+    def _sign_certificate(self, order, directory):
         """ Sign certificate """
         self.log.info('signing certificate')
         csr = self.create_csr()
-        code, result, headers = self.send_signed_request(
-            order['finalize'], {"csr": self._b64(csr)}, directory)
+        payload = {"csr": self._b64(csr)}
+        code, result, headers = self._send_signed_request(url=order['finalize'], payload=payload, directory=directory)
         self.log.debug('{0}, {1}, {2}'.format(code, result, headers))
         if code > 399:
             self.log.error("error signing certificate: {0} {1}".format(code, result))
@@ -91,8 +85,11 @@ class AcmeV2(Acme):
         self.log.info('acmev2 http challenge')
         self.log.info('preparing new order')
         order_payload = {"identifiers": [{"type": "dns", "value": d} for d in self.domains]}
-        code, order, order_headers = self.send_signed_request(
-            directory['newOrder'], order_payload, directory)
+        code, order, _ = self._send_signed_request(
+            url=directory['newOrder'],
+            payload=order_payload,
+            directory=directory
+        )
         order = json.loads(order)
         self.log.info('order created')
         for url in order['authorizations']:
@@ -100,34 +97,27 @@ class AcmeV2(Acme):
             self.log.debug(json.dumps(auth))
             domain = auth['identifier']['value']
             self.log.info('verifying domain {0}'.format(domain))
-            challenge = [c for c in auth['challenges'] if c['type'] == "http-01"][0]
+            challenge = self._get_challenge(auth, "http-01")
             token = re.sub(r"[^A-Za-z0-9_\-]", "_", challenge['token'])
             thumbprint = self._thumbprint()
             self.log.info('adding nginx virtual host and completing challenge')
             try:
-                challenge_dir = self.write_vhost()
-                self.write_challenge(challenge_dir, token, thumbprint)
+                challenge_dir = self._write_vhost()
+                self._write_challenge(challenge_dir, token, thumbprint)
             except Exception as e:
                 self.log.error('error adding virtual host {0} {1}'.format(type(e).__name__, e))
                 sys.exit(1)
             self.log.info('asking acme server to verify challenge')
-            code, result, headers = self.send_signed_request(challenge['url'], {}, directory)
-            if code > 399:
-                self.log.error("error triggering challenge: {0} {1}".format(code, result))
-                self._cleanup(
-                    ['{0}/{1}'.format(challenge_dir, token), self.vhost],
-                    directory=challenge_dir,
-                    exit_with_error=True
-                )
+            code, result, _ = self._send_signed_request(url=challenge['url'], directory=directory)
             try:
-                self.verify_challenge(url, domain)
+                if code > 399:
+                    self.log.error("error triggering challenge: {0} {1}".format(code, result))
+                    sys.exit(1)
+                self._verify_challenge(url, domain)
             finally:
-                self._cleanup(
-                    ['{0}/{1}'.format(challenge_dir, token), self.vhost],
-                    directory=challenge_dir
-                )
+                self._cleanup(['{0}/{1}'.format(challenge_dir, token), self.vhost, challenge_dir])
                 self._reload_nginx()
-        self.sign_certificate(order, directory)
+        self._sign_certificate(order, directory)
 
     def solve_dns_challenge(self, directory, client):
         """
@@ -139,8 +129,11 @@ class AcmeV2(Acme):
         self.log.info('acmev2 dns challenge')
         self.log.info('preparing new order')
         order_payload = {"identifiers": [{"type": "dns", "value": d} for d in self.domains]}
-        code, order, order_headers = self.send_signed_request(
-            directory['newOrder'], order_payload, directory)
+        code, order, _ = self._send_signed_request(
+            url=directory['newOrder'],
+            payload=order_payload,
+            directory=directory
+        )
         order = json.loads(order)
         self.log.info('order created')
         self.log.debug(order)
@@ -149,7 +142,7 @@ class AcmeV2(Acme):
             self.log.debug(json.dumps(auth))
             domain = auth['identifier']['value']
             self.log.info('verifying domain {0}'.format(domain))
-            challenge = [c for c in auth['challenges'] if c['type'] == "dns-01"][0]
+            challenge = self._get_challenge(auth, "dns-01")
             token = re.sub(r"[^A-Za-z0-9_\-]", "_", challenge['token'])
             thumbprint = self._thumbprint()
             keyauthorization = "{0}.{1}".format(token, thumbprint)
@@ -166,15 +159,16 @@ class AcmeV2(Acme):
                 sys.exit(1)
             try:
                 self.log.info('asking acme server to verify challenge')
-                code, result, headers = self.send_signed_request(
-                    challenge['url'],
-                    {"keyAuthorization": keyauthorization},
-                    directory
+                payload = {"keyAuthorization": keyauthorization}
+                code, result, headers = self._send_signed_request(
+                    url=challenge['url'],
+                    payload=payload,
+                    directory=directory
                 )
                 if code > 399:
                     self.log.error("error triggering challenge: {0} {1}".format(code, result))
                     raise Exception(result)
-                self.verify_challenge(url, domain)
+                self._verify_challenge(url, domain)
             finally:
                 try:
                     if not self.debug:
@@ -183,7 +177,7 @@ class AcmeV2(Acme):
                 except Exception as e:
                     self.log.error('error deleting dns record')
                     self.log.error(e)
-        self.sign_certificate(order, directory)
+        self._sign_certificate(order, directory)
 
     def get_certificate(self):
         directory = self.register_account()

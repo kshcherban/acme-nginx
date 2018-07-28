@@ -30,7 +30,7 @@ and the only binary it calls is **ps** to determine nginx master process id
 to send `SIGHUP` to it during challenge completion.
 
 As you may not trust this script feel free to check source code,
-it's under 800 lines.
+it's under 700 lines of code.
 
 Script should be run as root on host with running nginx server.
 Domain for which you request certificate should point to that host's IP and port

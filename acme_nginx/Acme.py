@@ -1,14 +1,15 @@
+import Crypto.PublicKey.RSA
+import OpenSSL
 import base64
 import binascii
-import Crypto.PublicKey.RSA
-import json
 import hashlib
-import OpenSSL
+import json
 import os
 import subprocess
 import sys
 import tempfile
 import time
+
 try:
     from urllib.request import urlopen, Request  # Python 3
 except ImportError:
@@ -25,6 +26,7 @@ class Acme(object):
             account_key='/etc/ssl/private/letsencrypt-account.key',
             domain_key='/etc/ssl/private/letsencrypt-domain.key',
             cert_path='/etc/ssl/private/letsencrypt-domain.pem',
+            dns_provider=None,
             debug=False):
         """
         Params:
@@ -36,6 +38,7 @@ class Acme(object):
             account_key, str, path to letsencrypt account key
             domain_key, str, path to certificate private key
             cert_path, str, path to output certificate file
+            dns_provider, list, dns provider that is used for dns challenge
         """
         self.debug = debug
         if not domains:
@@ -47,9 +50,12 @@ class Acme(object):
         self.cert_path = cert_path
         self.api_url = api_url
         self.log = logger
+        # LetsEncrypt Root CA certificate chain, needed for ACMEv1
+        self.chain = "https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem"
+        self.dns_provider = dns_provider
 
     def _reload_nginx(self):
-        """ Returns nginx master process id and sends HUP to it """
+        """ Return nginx master process id and sends HUP to it """
         try:
             m_pid = max(map(int, subprocess.Popen(
                 'ps -o ppid= -C nginx'.split(),
@@ -61,8 +67,8 @@ class Acme(object):
             raise
         return m_pid
 
-    def write_vhost(self):
-        """ Writes virtual host configuration for http """
+    def _write_vhost(self):
+        """ Write virtual host configuration for http """
         challenge_file = tempfile.mkdtemp()
         self.log.info('created challenge file into {0}'.format(challenge_file))
         os.chmod(challenge_file, 0o777)
@@ -83,19 +89,19 @@ server {{
         self._reload_nginx()
         return challenge_file
 
-    def write_challenge(self, challenge_dir, token, thumbprint):
+    def _write_challenge(self, challenge_dir, token, thumbprint):
         self.log.info('writing challenge file into {0}'.format(self.vhost))
         with open('{0}/{1}'.format(challenge_dir, token), 'w') as fd:
             fd.write("{0}.{1}".format(token, thumbprint))
 
     def create_key(self, key_path, key_type=OpenSSL.crypto.TYPE_RSA, bits=2048):
         """
-        Returns created private key and writes it into key_path
+        Return created private key and writes it into key_path
         Params:
             key_path, str, writable path for key
             key_type, int, SSL key type
             bits, int, the number of bits of the key
-        Returns:
+        Return:
             string with private key
         """
         try:
@@ -115,8 +121,8 @@ server {{
         return private_key
 
     def create_csr(self):
-        """ Generates CSR
-        Returns:
+        """ Generate CSR
+        Return:
             string with CSR in DER format
         """
         sna = ', '.join(['DNS:{0}'.format(i) for i in self.domains]).encode('utf8')
@@ -138,10 +144,10 @@ server {{
 
     def _sign_message(self, message):
         """
-        Signs provided message with key
+        Sign provided message with key
         Params:
             message, str, message to sign
-        Returns:
+        Return:
             string with signed message
         """
         with open(self.account_key, 'r') as fd:
@@ -150,7 +156,7 @@ server {{
         return OpenSSL.crypto.sign(pk, message.encode('utf8'), "sha256")
 
     def _jws(self):
-        """ Returns JWS dict from string account key """
+        """ Return JWS dict from string account key """
         with open(self.account_key, 'r') as fd:
             key = fd.read()
         pk = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, key)
@@ -170,32 +176,26 @@ server {{
         return header
 
     def _thumbprint(self):
-        """ Returns account thumbprint """
+        """ Return account thumbprint """
         accountkey_json = json.dumps(
             self._jws()['jwk'],
             sort_keys=True,
             separators=(',', ':'))
         return self._b64(hashlib.sha256(accountkey_json.encode('utf8')).digest())
 
-    def _cleanup(self, files, directory=None, exit_with_error=False):
+    def _cleanup(self, files):
         if not self.debug:
             for f in files:
                 self.log.info('removing {0}'.format(f))
                 try:
-                    os.remove(f)
+                    if os.path.isdir(f):
+                        os.rmdir(f)
+                    else:
+                        os.remove(f)
                 except OSError:
                     self.log.debug('{0} does not exist'.format(f))
-            if directory:
-                self.log.info('removing {0}'.format(directory))
-                try:
-                    os.rmdir(directory)
-                except OSError:
-                    self.log.debug('{0} does not exist'.format(directory))
-        if exit_with_error:
-            self._reload_nginx()
-            sys.exit(1)
 
-    def send_signed_request(self, url, payload, directory=None):
+    def _send_signed_request(self, url, payload=None, directory=None):
         """
         Send signed request to ACME CA
         Params:
@@ -203,6 +203,8 @@ server {{
             payload, any type, any payload you want to send, usually dict
             directory, dict, directory data from acme server
         """
+        if not payload:
+            payload = {}
         request_headers = {"Content-Type": "application/jose+json"}
         payload64 = self._b64(json.dumps(payload).encode('utf8'))
         # If not set then ACMEv1 is used
@@ -240,21 +242,35 @@ server {{
                    getattr(e, "read", e.__str__)(), \
                    getattr(e, "headers", None)
 
-    def verify_challenge(self, url, domain):
+    def _verify_challenge(self, url, domain):
         """ Verify challenge for domain """
         self.log.info('waiting for {0} challenge verification'.format(domain))
         checks_count = 60
         while True:
             checks_count -= 1
-            challenge_status = json.loads(urlopen(url).read().decode('utf8'))
-            if challenge_status['status'] == "pending":
-                time.sleep(5)
-            elif challenge_status['status'] == "valid":
-                self.log.info('{0} verified!'.format(domain))
-                break
-            else:
-                self.log.error('{0} challenge did not pass: {1}'.format(domain, challenge_status))
-                sys.exit(1)
             if checks_count <= 0:
                 self.log.error('reached waiting limit')
                 sys.exit(1)
+            challenge_status = json.loads(urlopen(url).read().decode('utf8'))
+            if challenge_status['status'] == "pending":
+                time.sleep(5)
+                continue
+            elif challenge_status['status'] == "valid":
+                self.log.info('{0} verified!'.format(domain))
+                break
+            self.log.error('{0} challenge did not pass: {1}'.format(domain, challenge_status))
+            sys.exit(1)
+
+    @staticmethod
+    def _get_challenge(auth, challenge_type):
+        """
+        Return challenge from dict
+        Params:
+            auth, dict, auth data structure from acme api
+            challenge_type, str, challenge type
+        Return:
+            challenge key
+        """
+        for c in auth['challenges']:
+            if c['type'] == challenge_type:
+                return c

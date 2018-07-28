@@ -1,5 +1,5 @@
 import json
-import os
+from os import getenv
 try:
     from urllib.request import urlopen, Request  # Python 3
 except ImportError:
@@ -8,7 +8,7 @@ except ImportError:
 
 class DigitalOcean(object):
     def __init__(self):
-        self.token = os.getenv('API_TOKEN')
+        self.token = getenv('API_TOKEN')
         self.api = "https://api.digitalocean.com/v2/domains"
         if not self.token:
             raise Exception('API_TOKEN not found in environment')
@@ -34,7 +34,7 @@ class DigitalOcean(object):
             name, string, record name
             data, string, record data
             domain, string, dns domain
-        Returns:
+        Return:
             record_id, int, created record id
         """
         registered_domain = self.determine_domain(domain)
@@ -72,6 +72,7 @@ class DigitalOcean(object):
             "Authorization": "Bearer {0}".format(self.token)
         }
         request = Request(api, data=json.dumps({}).encode('utf8'), headers=request_headers)
+        # this is hack around urllib to send DELETE request
         request.get_method = lambda: 'DELETE'
         response = urlopen(request)
         if response.getcode() != 204:
