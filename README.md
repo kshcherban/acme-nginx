@@ -10,6 +10,7 @@ Simple way to get SSL certificates for free.
 - [ACME v1](#acme-v1)
 - [Installation](#installation)
 - [Usage](#usage)
+  * [Wildcard certificates](#wildcard-certificates)
   * [Debug](#debug)
   * [Renewal](#renewal)
 
@@ -151,15 +152,6 @@ server {
 To renew it simply rerun the command! You can put it in cron, but don't forget
 about letsencrypt [rate limits](https://letsencrypt.org/docs/rate-limits/).
 
-
-Wildcard certificate generation:
-```
-sudo su -
-export API_TOKEN=yourDigitalOceanApiToken
-acme-nginx --dns digitalocean -d '*.example.com'
-```
-
-
 More complicated scenario: you have both account, domain keys and custom virtual host
 ```
 sudo acme-nginx \
@@ -168,6 +160,21 @@ sudo acme-nginx \
     --virtual-host /etc/nginx/sites-enabled/customvhost \
     -o /path/to/signed_certificate.pem \
     -d example.com -d www.example.com
+```
+
+### Wildcard certificates
+
+For wildcard certificate you need to have your domain managed by DNS provider
+with API. Currently only [DigitalOcean DNS](https://www.digitalocean.com/docs/networking/dns/) is supported.
+
+#### DigitalOcean
+
+Please create and export your DO API token as `API_TOKEN` env variable.
+Now you can generate wildcard certificate
+```
+sudo su -
+export API_TOKEN=yourDigitalOceanApiToken
+acme-nginx --dns digitalocean -d '*.example.com'
 ```
 
 ### Debug
