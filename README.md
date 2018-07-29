@@ -79,6 +79,15 @@ installation way because Python way includes compilation of dependencies that
 may take much time and CPU resources and may require you to install all build
 dependencies.
 
+### Fastest way
+
+Just download executable compiled with [pyinstaller](https://github.com/pyinstaller/pyinstaller).
+
+```
+wget https://github.com/kshcherban/acme-nginx/releases/download/v0.1.2/acme-nginx
+chmod +x acme-nginx
+```
+
 ### Python way
 
 Automatically
