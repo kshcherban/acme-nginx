@@ -1,5 +1,7 @@
 import argparse
 import logging
+from .AcmeV1 import AcmeV1
+from .AcmeV2 import AcmeV2
 
 
 def set_arguments():
@@ -75,13 +77,13 @@ def main():
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=log_level)
     log = logging.getLogger('acme')
     if args.acmev1:
-        from AcmeV1 import AcmeV1 as Acme
+        Acme = AcmeV1
         if args.staging:
             api_url = 'https://acme-staging.api.letsencrypt.org'
         else:
             api_url = 'https://acme-v01.api.letsencrypt.org'
     else:
-        from AcmeV2 import AcmeV2 as Acme
+        Acme = AcmeV2
         if args.staging:
             api_url = 'https://acme-staging-v02.api.letsencrypt.org/directory'
         else:

@@ -6,8 +6,8 @@ try:
     from urllib.request import urlopen, Request  # Python 3
 except ImportError:
     from urllib2 import urlopen, Request  # Python 2
-from Acme import Acme
-from DigitalOcean import DigitalOcean
+from .Acme import Acme
+from .DigitalOcean import DigitalOcean
 
 
 class AcmeV2(Acme):
