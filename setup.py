@@ -2,7 +2,7 @@
 
 from setuptools import setup, find_packages
 
-p_version = '0.0.8'
+p_version = '0.1.0'
 
 setup(
     name = 'acme-nginx',
@@ -16,7 +16,7 @@ setup(
     description = 'A simple client/tool for Let\'s Encrypt or any ACME server that issues SSL certificates.',
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    keywords = ["tls", "ssl", "certificate", "acme", "letsencrypt", "nginx"],
+    keywords = ["tls", "ssl", "certificate", "acme", "letsencrypt", "nginx", "wildcard certificate", "wildcard"],
     install_requires = [
         "pyOpenSSL>=0.13",
         "pycrypto>=2.6"
