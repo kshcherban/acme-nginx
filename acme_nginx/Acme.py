@@ -16,6 +16,9 @@ except ImportError:
     from urllib2 import urlopen, Request  # Python 2
 
 
+__version__ = "0.1.3"
+
+
 class Acme(object):
     def __init__(
             self,
@@ -205,7 +208,10 @@ server {{
         """
         if not payload:
             payload = {}
-        request_headers = {"Content-Type": "application/jose+json"}
+        request_headers = {
+            "Content-Type": "application/jose+json",
+            "User-Agent": "acme-nginx/{0} urllib".format(self.version())
+        }
         payload64 = self._b64(json.dumps(payload).encode('utf8'))
         # If not set then ACMEv1 is used
         if directory:
@@ -274,3 +280,7 @@ server {{
         for challenge in challenges:
             if challenge['type'] == challenge_type:
                 return challenge
+
+    @staticmethod
+    def version():
+        return __version__

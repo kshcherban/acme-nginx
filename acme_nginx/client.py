@@ -4,9 +4,6 @@ from acme_nginx.AcmeV1 import AcmeV1
 from acme_nginx.AcmeV2 import AcmeV2
 
 
-__version__ = "0.1.3"
-
-
 def set_arguments():
     """
     Parses command line arguments
@@ -71,7 +68,7 @@ def set_arguments():
             '-V',
             '--version',
             action='version',
-            version='acme-nginx {0}'.format(__version__))
+            version='acme-nginx {0}'.format(AcmeV2.version()))
     return parser.parse_args()
 
 
