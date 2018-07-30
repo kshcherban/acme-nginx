@@ -7,7 +7,7 @@ try:
     from urllib.request import urlopen  # Python 3
 except ImportError:
     from urllib2 import urlopen  # Python 2
-from .Acme import Acme
+from Acme import Acme
 
 
 class AcmeV1(Acme):

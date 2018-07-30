@@ -1,7 +1,10 @@
 import argparse
 import logging
-from .AcmeV1 import AcmeV1
-from .AcmeV2 import AcmeV2
+from acme_nginx.AcmeV1 import AcmeV1
+from acme_nginx.AcmeV2 import AcmeV2
+
+
+__version__ = "0.1.3"
 
 
 def set_arguments():
@@ -63,8 +66,12 @@ def set_arguments():
     parser.add_argument(
             '--staging',
             action='store_true',
-            help='use staging api endpoint for testing'
-    )
+            help='use staging api endpoint for testing')
+    parser.add_argument(
+            '-V',
+            '--version',
+            action='version',
+            version='acme-nginx {0}'.format(__version__))
     return parser.parse_args()
 
 
@@ -100,7 +107,3 @@ def main():
         dns_provider=args.dns_provider
     )
     acme.get_certificate()
-
-
-if __name__ == "__main__":
-    main()
