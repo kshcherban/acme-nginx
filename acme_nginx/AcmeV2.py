@@ -90,6 +90,7 @@ class AcmeV2(Acme):
             payload=order_payload,
             directory=directory
         )
+        self.log.debug(order)
         order = json.loads(order)
         self.log.info('order created')
         for url in order['authorizations']:
@@ -134,9 +135,9 @@ class AcmeV2(Acme):
             payload=order_payload,
             directory=directory
         )
+        self.log.debug(order)
         order = json.loads(order)
         self.log.info('order created')
-        self.log.debug(order)
         for url in order['authorizations']:
             auth = json.loads(urlopen(url).read().decode('utf8'))
             self.log.debug(json.dumps(auth))
