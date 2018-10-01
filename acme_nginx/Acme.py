@@ -77,7 +77,8 @@ class Acme(object):
         os.chmod(challenge_file, 0o777)
         vhost_data = """
 server {{
-    listen [::]:80 ipv6only=off;
+    listen 80;
+    listen [::]:80;
     server_name {domain};
     location /.well-known/acme-challenge/ {{
         alias {alias}/;
