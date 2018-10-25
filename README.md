@@ -113,6 +113,7 @@ sudo python setup.py install
 
 ```
 sudo yum install -y pyOpenSSL python-crypto python-setuptools
+sudo yum groupinstall -y "Development tools"
 sudo python setup.py install
 ```
 
