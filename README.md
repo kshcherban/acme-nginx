@@ -55,10 +55,14 @@ New protocol is used by default.
 
 `http-01` challenge is passed exactly as in v1 protocol realisation.
 
-`dns-01` currently supports only DigitalOcean DNS provider. Technically nginx
-is not needed for this type of challenge but script still calls nginx reload
+`dns-01` currently supports only DigitalOcean, AWS Route53 DNS providers.
+
+Technically nginx is not needed for this type of challenge but script still calls nginx reload by default
 because it assumes that you store certificates on the same server where you issue
-them.
+them. To disable that behavior please specify `--no-reload-nginx` parameter.
+
+AWS Route53 uses `default` profile in session, specifying profile works with environment variables only.
+Please check https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#environment-variable-configuration
 
 In case you want to add support of different DNS providers your contribution is 
 highly apprectiated.
@@ -175,7 +179,13 @@ sudo acme-nginx \
 ### Wildcard certificates
 
 For wildcard certificate you need to have your domain managed by DNS provider
-with API. Currently only [DigitalOcean DNS](https://www.digitalocean.com/docs/networking/dns/) is supported.
+with API. Currently only [DigitalOcean DNS](https://www.digitalocean.com/docs/networking/dns/) and
+[AWS Route53](https://aws.amazon.com/route53/) are supported.
+
+Example how to get wildcard certificate without nginx
+```
+sudo acme-nginx --no-reload-nginx --dns-provider route53 -d "*.example.com"
+```
 
 #### DigitalOcean
 

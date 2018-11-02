@@ -16,7 +16,7 @@ except ImportError:
     from urllib2 import urlopen, Request  # Python 2
 
 
-__version__ = "0.1.3"
+__version__ = "0.2.0"
 
 
 class Acme(object):
@@ -30,6 +30,7 @@ class Acme(object):
             domain_key='/etc/ssl/private/letsencrypt-domain.key',
             cert_path='/etc/ssl/private/letsencrypt-domain.pem',
             dns_provider=None,
+            skip_nginx_reload=False,
             debug=False):
         """
         Params:
@@ -42,6 +43,7 @@ class Acme(object):
             domain_key, str, path to certificate private key
             cert_path, str, path to output certificate file
             dns_provider, list, dns provider that is used for dns challenge
+            skip_nginx_reload, bool, should nginx be reloaded after certificate issue
         """
         self.debug = debug
         if not domains:
@@ -56,6 +58,7 @@ class Acme(object):
         # LetsEncrypt Root CA certificate chain, needed for ACMEv1
         self.chain = "https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem"
         self.dns_provider = dns_provider
+        self.skip_nginx_reload = skip_nginx_reload
 
     def _reload_nginx(self):
         """ Return nginx master process id and sends HUP to it """

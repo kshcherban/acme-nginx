@@ -59,7 +59,7 @@ def set_arguments():
     parser.add_argument(
             '--dns-provider',
             dest='dns_provider',
-            choices=['digitalocean'])
+            choices=['digitalocean', 'route53'])
     parser.add_argument(
             '--staging',
             action='store_true',
@@ -69,6 +69,11 @@ def set_arguments():
             '--version',
             action='version',
             version='acme-nginx {0}'.format(AcmeV2.version()))
+    parser.add_argument(
+            '--no-reload-nginx',
+            dest='skip_reload',
+            action='store_true',
+            help="don't reload nginx after certificate signing")
     return parser.parse_args()
 
 
@@ -101,6 +106,7 @@ def main():
         vhost=args.vhost,
         cert_path=args.cert_path,
         debug=args.debug,
-        dns_provider=args.dns_provider
+        dns_provider=args.dns_provider,
+        skip_nginx_reload=args.skip_reload
     )
     acme.get_certificate()

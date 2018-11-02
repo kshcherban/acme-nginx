@@ -8,6 +8,7 @@ except ImportError:
     from urllib2 import urlopen, Request  # Python 2
 from .Acme import Acme
 from .DigitalOcean import DigitalOcean
+from .AWSRoute53 import AWSRoute53
 
 
 class AcmeV2(Acme):
@@ -74,7 +75,8 @@ class AcmeV2(Acme):
                 fd.write(certificate_pem)
         except Exception as e:
             self.log.error('error writing cert: {0} {1}'.format(type(e).__name__, e))
-        self._reload_nginx()
+        if not self.skip_nginx_reload:
+            self._reload_nginx()
 
     def solve_http_challenge(self, directory):
         """
@@ -150,7 +152,7 @@ class AcmeV2(Acme):
             txt_record = self._b64(hashlib.sha256(keyauthorization.encode('utf8')).digest())
             self.log.info('creating TXT dns record _acme-challenge.{0} IN TXT {1}'.format(domain, txt_record))
             try:
-                record_id = client.create_record(
+                record = client.create_record(
                     domain=domain,
                     name='_acme-challenge.{0}.'.format(domain.lstrip('*.').rstrip('.')),
                     data=txt_record)
@@ -174,7 +176,7 @@ class AcmeV2(Acme):
                 try:
                     if not self.debug:
                         self.log.info('delete dns record')
-                        client.delete_record(domain=domain, record_id=record_id)
+                        client.delete_record(domain=domain, record=record)
                 except Exception as e:
                     self.log.error('error deleting dns record')
                     self.log.error(e)
@@ -185,6 +187,8 @@ class AcmeV2(Acme):
         if self.dns_provider:
             if self.dns_provider == 'digitalocean':
                 dns_client = DigitalOcean()
+            elif self.dns_provider == 'route53':
+                dns_client = AWSRoute53()
             self.solve_dns_challenge(directory, dns_client)
         else:
             self.solve_http_challenge(directory)

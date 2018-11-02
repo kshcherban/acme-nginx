@@ -2,7 +2,7 @@
 
 from setuptools import setup, find_packages
 
-p_version = '0.1.3'
+p_version = '0.2.0'
 
 with open('README.md') as f:
     long_description = f.read()
@@ -22,7 +22,8 @@ setup(
     keywords = ["tls", "ssl", "certificate", "acme", "letsencrypt", "nginx", "wildcard certificate", "wildcard"],
     install_requires = [
         "pyOpenSSL>=0.13",
-        "pycrypto>=2.6"
+        "pycrypto>=2.6",
+        "boto3~=1.9.30",
     ],
     entry_points = {
         'console_scripts': [

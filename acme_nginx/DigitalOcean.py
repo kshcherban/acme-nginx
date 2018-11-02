@@ -58,15 +58,15 @@ class DigitalOcean(object):
             raise Exception(json.loads(response.read().decode('utf8')))
         return json.loads(response.read().decode('utf8'))['domain_record']['id']
 
-    def delete_record(self, record_id, domain):
+    def delete_record(self, record, domain):
         """
         Delete DNS record
         Params:
-            record_id, int, record id number
+            record, int, record id number
             domain, string, dns domain
         """
         registered_domain = self.determine_domain(domain)
-        api = self.api + '/' + registered_domain + '/records/' + str(record_id)
+        api = self.api + '/' + registered_domain + '/records/' + str(record)
         request_headers = {
             "Content-Type": "application/json",
             "Authorization": "Bearer {0}".format(self.token)
