@@ -6,31 +6,23 @@ class AWSRoute53(object):
         self.session = boto3.Session()
         self.client = self.session.client('route53')
 
-    def __get_domains(self, next_zone=None, next_dns=None, data=[]):
-        """ Recursively get all hosted dns zones """
-        if not next_zone:
-            out = self.client.list_hosted_zones_by_name()
-        else:
-            out = self.client.list_hosted_zones_by_name(DNSName=next_dns, HostedZoneId=next_zone)
-        for i in out['HostedZones']:
-            data.append((i['Name'], i['Id']))
-        if out['IsTruncated']:
-            self.__get_domains(
-                    next_zone=out['NextHostedZoneId'],
-                    next_dns=out['NextDNSName'],
-                    data=data)
-        else:
-            return
-
     def determine_domain(self, domain):
-        """ Determine registered domain in API and return hosted zone id """
+        """
+        Determine registered domain in API and return it's hosted zone id
+        Params:
+            domain, string, domain name that is be part of account's hosted zones
+        Returns:
+            zone_id, string, hosted zone id of matching domain
+        """
         if not domain.endswith('.'):
             domain = domain + '.'
-        zones = []
-        self.__get_domains(data=zones)
-        for domain_set in zones:
-            if domain_set[0] in domain:
-                return domain_set[1]
+        # use paginator to iterate over all hosted zones
+        paginator = self.client.get_paginator('list_hosted_zones')
+        # https://github.com/boto/botocore/issues/1535 result_key_iters is undocumented
+        for page in paginator.paginate().result_key_iters():
+            for result in page:
+                if result['Name'] in domain:
+                    return result['Id']
 
     def create_record(self, name, data, domain):
         """
