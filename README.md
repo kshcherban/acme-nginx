@@ -194,7 +194,7 @@ Now you can generate wildcard certificate
 ```
 sudo su -
 export API_TOKEN=yourDigitalOceanApiToken
-acme-nginx --dns digitalocean -d '*.example.com'
+acme-nginx --dns-provider digitalocean -d '*.example.com'
 ```
 
 ### Debug
