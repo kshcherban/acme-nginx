@@ -1,0 +1,18 @@
+sudo: required
+services:
+  - docker
+
+env:
+  global:
+    - BUILD_TAG=acme-nginx
+
+script:
+  - docker build -t ${REGISTRY_HOST}/${BUILD_TAG}:build-${TRAVIS_BUILD_NUMBER}
+
+before_deploy:
+  - docker login -u ${DOCKER_USER} -p ${DOCKER_PASSWORD} ${REGISTRY_HOST}
+  - docker tag ${REGISTRY_HOST}/${BUILD_TAG}:build-${TRAVIS_BUILD_NUMBER} ${REGISTRY_HOST}/${BUILD_TAG}:latest
+
+deploy:
+  provider: script
+  script: docker push "${REGISTRY_HOST}/${BUILD_TAG}:latest" && docker push "${REGISTRY_HOST}/${BUILD_TAG}:build-${TRAVIS_BUILD_NUMBER}"
