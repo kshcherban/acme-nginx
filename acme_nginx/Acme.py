@@ -61,7 +61,8 @@ class Acme(object):
         self.dns_provider = dns_provider
         self.skip_nginx_reload = skip_nginx_reload
 
-    def _get_nginx_pid(self):
+    @staticmethod
+    def _get_nginx_pid():
         if platform.system() == "Linux":
             return max(map(int, subprocess.Popen(
                 'ps -o ppid= -C nginx'.split(),
