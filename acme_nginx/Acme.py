@@ -5,6 +5,7 @@ import binascii
 import hashlib
 import json
 import os
+import platform
 import subprocess
 import sys
 import tempfile
@@ -60,12 +61,23 @@ class Acme(object):
         self.dns_provider = dns_provider
         self.skip_nginx_reload = skip_nginx_reload
 
+    @staticmethod
+    def _get_nginx_pid():
+        if platform.system() == "Linux":
+            return max(map(int, subprocess.Popen(
+                'ps -o ppid= -C nginx'.split(),
+                stdout=subprocess.PIPE).communicate()[0].split()))
+        else:
+            pl = subprocess.Popen(
+                'ps -ax -o ppid= -o command= -c'.split(),
+                stdout=subprocess.PIPE).communicate()[0].splitlines()
+            return max(map(int, [p.split()[0] for p in pl
+                                 if p.endswith(b'nginx')]))
+
     def _reload_nginx(self):
         """ Return nginx master process id and sends HUP to it """
         try:
-            m_pid = max(map(int, subprocess.Popen(
-                'ps -o ppid= -C nginx'.split(),
-                stdout=subprocess.PIPE).communicate()[0].split()))
+            m_pid = self._get_nginx_pid()
             self.log.info('killing nginx process {0} with HUP'.format(m_pid))
             os.kill(m_pid, 1)
         except ValueError:
