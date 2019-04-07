@@ -61,29 +61,19 @@ class Acme(object):
         self.dns_provider = dns_provider
         self.skip_nginx_reload = skip_nginx_reload
 
-    @staticmethod
-    def _get_nginx_pid():
-        if platform.system() == "Linux":
-            return max(map(int, subprocess.Popen(
-                'ps -o ppid= -C nginx'.split(),
-                stdout=subprocess.PIPE).communicate()[0].split()))
-        else:
-            pl = subprocess.Popen(
-                'ps -ax -o ppid= -o command= -c'.split(),
-                stdout=subprocess.PIPE).communicate()[0].splitlines()
-            return max(map(int, [p.split()[0] for p in pl
-                                 if p.endswith(b'nginx')]))
-
     def _reload_nginx(self):
-        """ Return nginx master process id and sends HUP to it """
-        try:
-            m_pid = self._get_nginx_pid()
-            self.log.info('killing nginx process {0} with HUP'.format(m_pid))
-            os.kill(m_pid, 1)
-        except ValueError:
-            self.log.error('no nginx process found, please make sure nginx is running')
-            raise
-        return m_pid
+        """ Reload nginx """
+        self.log.info('running nginx -s reload')
+        process = subprocess.Popen(
+                'nginx -s reload'.split(),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
+        process_out = process.communicate()
+        self.log.debug(process_out[0])
+        self.log.debug(process_out[1])
+        if process.returncode > 0:
+            self.log.error('failed to reload nginx')
+            self.log.error(process_out[1])
 
     def _write_vhost(self):
         """ Write virtual host configuration for http """
