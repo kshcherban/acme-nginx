@@ -106,6 +106,26 @@ cd acme-nginx
 python setup.py install
 ```
 
+### Docker way
+
+You can build docker image with acme-nginx inside:
+
+```
+docker build -t acme-nginx .
+docker run --rm -v /etc/nginx:/etc/nginx --pid=host \
+	-d example.com -d www.example.com
+```
+
+There is also single binary in docker image compiled by `pyinstaller` , you can copy it like this:
+
+```
+docker run --name acme acme-nginx
+docker cp acme:/usr/bin/acme-runner acme-nginx
+docker rm acme
+```
+
+
+
 ### Debian/Ubuntu way
 
 ```
