@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from datetime import datetime, timedelta
 
 try:
     from urllib.request import urlopen, Request  # Python 3
@@ -32,6 +33,7 @@ class Acme(object):
             cert_path='/etc/ssl/private/letsencrypt-domain.pem',
             dns_provider=None,
             skip_nginx_reload=False,
+            update_date_threshold_days=None,
             debug=False):
         """
         Params:
@@ -60,6 +62,23 @@ class Acme(object):
         self.chain = "https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem"
         self.dns_provider = dns_provider
         self.skip_nginx_reload = skip_nginx_reload
+        self.update_date_threshold_days = update_date_threshold_days
+        
+        self.IsOutOfDate = True
+        if self.update_date_threshold_days:
+            try:
+                certTime = datetime.fromtimestamp(os.path.getmtime(self.cert_path))
+                certTimeThreshold = certTime + timedelta(days=self.update_date_threshold_days)
+
+                self.IsOutOfDate = (certTimeThreshold < datetime.now())
+                self.log.info('Cert file {1} (expiration time {0})'.format( certTimeThreshold, "is out of date" if self.IsOutOfDate else "is not out of date"))      
+                
+            except OSError as e:
+                if e.errno == 2:
+                    self.log.info('Cert file {0} not found -> DO UPDATE CERT'.format(self.cert_path)) 
+            except:   
+                pass
+            
 
     def _reload_nginx(self):
         """ Reload nginx """
