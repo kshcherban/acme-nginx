@@ -33,7 +33,7 @@ class Acme(object):
             cert_path='/etc/ssl/private/letsencrypt-domain.pem',
             dns_provider=None,
             skip_nginx_reload=False,
-            update_date_threshold_days=None,
+            renew_days=None,
             debug=False):
         """
         Params:
@@ -62,15 +62,22 @@ class Acme(object):
         self.chain = "https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem"
         self.dns_provider = dns_provider
         self.skip_nginx_reload = skip_nginx_reload
-        self.update_date_threshold_days = update_date_threshold_days
+        self.renew_days = renew_days
         
         self.IsOutOfDate = True
-        if self.update_date_threshold_days:
+        if self.renew_days:
             try:
-                certTime = datetime.fromtimestamp(os.path.getmtime(self.cert_path))
-                certTimeThreshold = certTime + timedelta(days=self.update_date_threshold_days)
+                cert = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, open(self.cert_path).read())
+                date_format, encoding = "%Y%m%d%H%M%SZ", "ascii"
+                not_before = datetime.strptime(cert.get_notBefore().decode(encoding), date_format)
+                not_after = datetime.strptime(cert.get_notAfter().decode(encoding), date_format)
+                now = datetime.now()
+                #self.log.info( 'x509: {0} {1} {2}'.format(cert, not_before, not_after) )
+                #certTime = datetime.fromtimestamp(os.path.getmtime(self.cert_path))
+                #certTimeThreshold = certTime + timedelta(days=self.renew_days)
+                certTimeThreshold = not_after - timedelta(days=self.renew_days)
 
-                self.IsOutOfDate = (certTimeThreshold < datetime.now())
+                self.IsOutOfDate = (not_before > now) or (not_after < now) or (certTimeThreshold < now)
                 self.log.info('Cert file {1} (expiration time {0})'.format( certTimeThreshold, "is out of date" if self.IsOutOfDate else "is not out of date"))      
                 
             except OSError as e:

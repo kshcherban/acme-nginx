@@ -75,8 +75,8 @@ def set_arguments():
             action='store_true',
             help="don't reload nginx after certificate signing")
     parser.add_argument(
-            '--out-of-date-update-threshold-days',
-            dest='update_date_threshold_days',
+            '--renew-days',
+            dest='renew_days',
             type=int,
             help="expiration threshold in days")
     return parser.parse_args()
@@ -113,7 +113,7 @@ def main():
         debug=args.debug,
         dns_provider=args.dns_provider,
         skip_nginx_reload=args.skip_reload,
-        update_date_threshold_days = args.update_date_threshold_days
+        renew_days=args.renew_days
     )
     if acme.IsOutOfDate:
         acme.get_certificate()
