@@ -74,6 +74,11 @@ def set_arguments():
             dest='skip_reload',
             action='store_true',
             help="don't reload nginx after certificate signing")
+    parser.add_argument(
+            '--renew-days',
+            dest='renew_days',
+            type=int,
+            help="expiration threshold in days")
     return parser.parse_args()
 
 
@@ -107,6 +112,8 @@ def main():
         cert_path=args.cert_path,
         debug=args.debug,
         dns_provider=args.dns_provider,
-        skip_nginx_reload=args.skip_reload
+        skip_nginx_reload=args.skip_reload,
+        renew_days=args.renew_days
     )
-    acme.get_certificate()
+    if acme.IsOutOfDate:
+        acme.get_certificate()
