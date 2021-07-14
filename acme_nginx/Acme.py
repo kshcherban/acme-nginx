@@ -5,7 +5,6 @@ import binascii
 import hashlib
 import json
 import os
-import platform
 import subprocess
 import sys
 import tempfile
@@ -23,18 +22,19 @@ __version__ = "0.2.1"
 
 class Acme(object):
     def __init__(
-            self,
-            api_url,
-            logger,
-            domains=None,
-            vhost='/etc/nginx/sites-enabled/0-letsencrypt.conf',
-            account_key='/etc/ssl/private/letsencrypt-account.key',
-            domain_key='/etc/ssl/private/letsencrypt-domain.key',
-            cert_path='/etc/ssl/private/letsencrypt-domain.pem',
-            dns_provider=None,
-            skip_nginx_reload=False,
-            renew_days=None,
-            debug=False):
+        self,
+        api_url,
+        logger,
+        domains=None,
+        vhost="/etc/nginx/sites-enabled/0-letsencrypt.conf",
+        account_key="/etc/ssl/private/letsencrypt-account.key",
+        domain_key="/etc/ssl/private/letsencrypt-domain.key",
+        cert_path="/etc/ssl/private/letsencrypt-domain.pem",
+        dns_provider=None,
+        skip_nginx_reload=False,
+        renew_days=None,
+        debug=False,
+    ):
         """
         Params:
             api_url, str, Letsencrypt API URL
@@ -63,48 +63,63 @@ class Acme(object):
         self.dns_provider = dns_provider
         self.skip_nginx_reload = skip_nginx_reload
         self.renew_days = renew_days
-        
+
         self.IsOutOfDate = True
         if self.renew_days:
             try:
-                cert = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, open(self.cert_path).read())
+                cert = OpenSSL.crypto.load_certificate(
+                    OpenSSL.crypto.FILETYPE_PEM, open(self.cert_path).read()
+                )
                 date_format, encoding = "%Y%m%d%H%M%SZ", "ascii"
-                not_before = datetime.strptime(cert.get_notBefore().decode(encoding), date_format)
-                not_after = datetime.strptime(cert.get_notAfter().decode(encoding), date_format)
+                not_before = datetime.strptime(
+                    cert.get_notBefore().decode(encoding), date_format
+                )
+                not_after = datetime.strptime(
+                    cert.get_notAfter().decode(encoding), date_format
+                )
                 now = datetime.now()
-                #self.log.info( 'x509: {0} {1} {2}'.format(cert, not_before, not_after) )
-                #certTime = datetime.fromtimestamp(os.path.getmtime(self.cert_path))
-                #certTimeThreshold = certTime + timedelta(days=self.renew_days)
+                # self.log.info( 'x509: {0} {1} {2}'.format(cert, not_before, not_after) )
+                # certTime = datetime.fromtimestamp(os.path.getmtime(self.cert_path))
+                # certTimeThreshold = certTime + timedelta(days=self.renew_days)
                 certTimeThreshold = not_after - timedelta(days=self.renew_days)
 
-                self.IsOutOfDate = (not_before > now) or (not_after < now) or (certTimeThreshold < now)
-                self.log.info('Cert file {1} (expiration time {0})'.format( certTimeThreshold, "is out of date" if self.IsOutOfDate else "is not out of date"))      
-                
+                self.IsOutOfDate = (
+                    (not_before > now) or (not_after < now) or (certTimeThreshold < now)
+                )
+                self.log.info(
+                    "Cert file {1} (expiration time {0})".format(
+                        certTimeThreshold,
+                        "is out of date" if self.IsOutOfDate else "is not out of date",
+                    )
+                )
+
             except OSError as e:
                 if e.errno == 2:
-                    self.log.info('Cert file {0} not found -> DO UPDATE CERT'.format(self.cert_path)) 
-            except:   
+                    self.log.info(
+                        "Cert file {0} not found -> DO UPDATE CERT".format(
+                            self.cert_path
+                        )
+                    )
+            except:
                 pass
-            
 
     def _reload_nginx(self):
-        """ Reload nginx """
-        self.log.info('running nginx -s reload')
+        """Reload nginx"""
+        self.log.info("running nginx -s reload")
         process = subprocess.Popen(
-                'nginx -s reload'.split(),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+            "nginx -s reload".split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
         process_out = process.communicate()
         self.log.debug(process_out[0])
         self.log.debug(process_out[1])
         if process.returncode > 0:
-            self.log.error('failed to reload nginx')
+            self.log.error("failed to reload nginx")
             self.log.error(process_out[1])
 
     def _write_vhost(self):
-        """ Write virtual host configuration for http """
+        """Write virtual host configuration for http"""
         challenge_file = tempfile.mkdtemp()
-        self.log.info('created challenge file into {0}'.format(challenge_file))
+        self.log.info("created challenge file into {0}".format(challenge_file))
         os.chmod(challenge_file, 0o777)
         vhost_data = """
 server {{
@@ -115,17 +130,19 @@ server {{
         alias {alias}/;
         try_files $uri =404;
     }}
-}}""".format(domain=' '.join(self.domains), alias=challenge_file)
-        self.log.info('writing virtual host into {0}'.format(self.vhost))
-        with open(self.vhost, 'w') as fd:
+}}""".format(
+            domain=" ".join(self.domains), alias=challenge_file
+        )
+        self.log.info("writing virtual host into {0}".format(self.vhost))
+        with open(self.vhost, "w") as fd:
             fd.write(vhost_data)
         os.chmod(self.vhost, 0o644)
         self._reload_nginx()
         return challenge_file
 
     def _write_challenge(self, challenge_dir, token, thumbprint):
-        self.log.info('writing challenge file into {0}'.format(self.vhost))
-        with open('{0}/{1}'.format(challenge_dir, token), 'w') as fd:
+        self.log.info("writing challenge file into {0}".format(self.vhost))
+        with open("{0}/{1}".format(challenge_dir, token), "w") as fd:
             fd.write("{0}.{1}".format(token, thumbprint))
 
     def create_key(self, key_path, key_type=OpenSSL.crypto.TYPE_RSA, bits=2048):
@@ -139,42 +156,52 @@ server {{
             string with private key
         """
         try:
-            with open(key_path, 'r') as fd:
+            with open(key_path, "r") as fd:
                 private_key = fd.read()
         except IOError:
             key = OpenSSL.crypto.PKey()
             key.generate_key(key_type, bits)
             private_key = OpenSSL.crypto.dump_privatekey(
-                OpenSSL.crypto.FILETYPE_PEM, key)
-            self.log.info('can not open key, writing new in {path}'.format(path=key_path))
+                OpenSSL.crypto.FILETYPE_PEM, key
+            )
+            self.log.info(
+                "can not open key, writing new in {path}".format(path=key_path)
+            )
             if not os.path.isdir(os.path.dirname(key_path)):
                 os.mkdir(os.path.dirname(key_path))
-            with open(key_path, 'wb') as fd:
+            with open(key_path, "wb") as fd:
                 fd.write(private_key)
             os.chmod(key_path, 0o400)
         return private_key
 
     def create_csr(self):
-        """ Generate CSR
+        """Generate CSR
         Return:
             string with CSR in DER format
         """
-        sna = ', '.join(['DNS:{0}'.format(i) for i in self.domains]).encode('utf8')
+        sna = ", ".join(["DNS:{0}".format(i) for i in self.domains]).encode("utf8")
         req = OpenSSL.crypto.X509Req()
         req.get_subject().CN = self.domains[0]
-        req.add_extensions([OpenSSL.crypto.X509Extension(
-            'subjectAltName'.encode('utf8'), critical=False, value=sna)])
-        with open(self.domain_key, 'r') as fd:
+        req.add_extensions(
+            [
+                OpenSSL.crypto.X509Extension(
+                    "subjectAltName".encode("utf8"), critical=False, value=sna
+                )
+            ]
+        )
+        with open(self.domain_key, "r") as fd:
             key = fd.read()
         pk = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, key)
         req.set_pubkey(pk)
         req.set_version(2)
         req.sign(pk, "sha256")
-        return OpenSSL.crypto.dump_certificate_request(OpenSSL.crypto.FILETYPE_ASN1, req)
+        return OpenSSL.crypto.dump_certificate_request(
+            OpenSSL.crypto.FILETYPE_ASN1, req
+        )
 
     @staticmethod
     def _b64(b):
-        return base64.urlsafe_b64encode(b).decode('utf8').replace("=", "")
+        return base64.urlsafe_b64encode(b).decode("utf8").replace("=", "")
 
     def _sign_message(self, message):
         """
@@ -184,14 +211,14 @@ server {{
         Return:
             string with signed message
         """
-        with open(self.account_key, 'r') as fd:
+        with open(self.account_key, "r") as fd:
             key = fd.read()
         pk = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, key)
-        return OpenSSL.crypto.sign(pk, message.encode('utf8'), "sha256")
+        return OpenSSL.crypto.sign(pk, message.encode("utf8"), "sha256")
 
     def _jws(self):
-        """ Return JWS dict from string account key """
-        with open(self.account_key, 'r') as fd:
+        """Return JWS dict from string account key"""
+        with open(self.account_key, "r") as fd:
             key = fd.read()
         pk = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, key)
         pk_asn1 = OpenSSL.crypto.dump_privatekey(OpenSSL.crypto.FILETYPE_ASN1, pk)
@@ -204,30 +231,31 @@ server {{
         header = {
             "alg": "RS256",
             "jwk": {
-                "e": self._b64(binascii.unhexlify(exponent.encode('utf8'))),
+                "e": self._b64(binascii.unhexlify(exponent.encode("utf8"))),
                 "kty": "RSA",
-                "n": self._b64(binascii.unhexlify(modulus.encode('utf8')))}}
+                "n": self._b64(binascii.unhexlify(modulus.encode("utf8"))),
+            },
+        }
         return header
 
     def _thumbprint(self):
-        """ Return account thumbprint """
+        """Return account thumbprint"""
         accountkey_json = json.dumps(
-            self._jws()['jwk'],
-            sort_keys=True,
-            separators=(',', ':'))
-        return self._b64(hashlib.sha256(accountkey_json.encode('utf8')).digest())
+            self._jws()["jwk"], sort_keys=True, separators=(",", ":")
+        )
+        return self._b64(hashlib.sha256(accountkey_json.encode("utf8")).digest())
 
     def _cleanup(self, files):
         if not self.debug:
             for f in files:
-                self.log.info('removing {0}'.format(f))
+                self.log.info("removing {0}".format(f))
                 try:
                     if os.path.isdir(f):
                         os.rmdir(f)
                     else:
                         os.remove(f)
                 except OSError:
-                    self.log.debug('{0} does not exist'.format(f))
+                    self.log.debug("{0} does not exist".format(f))
 
     def _send_signed_request(self, url, payload=None, directory=None):
         """
@@ -237,65 +265,86 @@ server {{
             payload, any type, any payload you want to send, usually dict
             directory, dict, directory data from acme server
         """
-        if not payload:
-            payload = {}
         request_headers = {
             "Content-Type": "application/jose+json",
-            "User-Agent": "acme-nginx/{0} urllib".format(self.version())
+            "User-Agent": "acme-nginx/{0} urllib".format(self.version()),
         }
-        payload64 = self._b64(json.dumps(payload).encode('utf8'))
+        if payload is None:
+            payload = {}
+        # on POST-as-GET, final payload has to be just empty string
+        if payload == "":
+            payload64 = ""
+        else:
+            payload64 = self._b64(json.dumps(payload).encode("utf8"))
         # If not set then ACMEv1 is used
         if directory:
             # jwk and kid header fields are mutually exclusive
-            if directory['_kid']:
-                protected = {'kid': directory['_kid']}
+            if directory["_kid"]:
+                protected = {"kid": directory["_kid"]}
             else:
                 protected = self._jws()
-            protected["nonce"] = urlopen(Request(
-                directory['newNonce'],
-                headers=request_headers)
-            ).headers['Replay-Nonce']
+            protected["nonce"] = urlopen(
+                Request(directory["newNonce"], headers=request_headers)
+            ).headers["Replay-Nonce"]
             protected["url"] = url
             protected["alg"] = "RS256"  # set for compatibility
         else:
             protected = self._jws()
-            protected["nonce"] = urlopen(self.api_url + "/directory").headers['Replay-Nonce']
-        protected64 = self._b64(json.dumps(protected).encode('utf8'))
+            protected["nonce"] = urlopen(self.api_url + "/directory").headers[
+                "Replay-Nonce"
+            ]
+        protected64 = self._b64(json.dumps(protected).encode("utf8"))
         signature = self._sign_message("{0}.{1}".format(protected64, payload64))
-        data = json.dumps({
-            "protected": protected64,
-            "payload": payload64,
-            "signature": self._b64(signature)})
+        data = json.dumps(
+            {
+                "protected": protected64,
+                "payload": payload64,
+                "signature": self._b64(signature),
+            }
+        )
         try:
-            resp = urlopen(Request(url, data=data.encode('utf8'), headers=request_headers))
+            resp = urlopen(
+                Request(
+                    url,
+                    data=data.encode("utf8"),
+                    headers=request_headers,
+                    method="POST",
+                )
+            )
             resp_data = resp.read()
             try:
-                resp_data = resp_data.decode('utf8')
+                resp_data = resp_data.decode("utf8")
             except UnicodeDecodeError:
                 pass
             return resp.getcode(), resp_data, resp.headers
         except Exception as e:
-            return getattr(e, "code", None), \
-                   getattr(e, "read", e.__str__)(), \
-                   getattr(e, "headers", None)
+            return (
+                getattr(e, "code", None),
+                getattr(e, "read", e.__str__)(),
+                getattr(e, "headers", None),
+            )
 
-    def _verify_challenge(self, url, domain):
-        """ Verify challenge for domain """
-        self.log.info('waiting for {0} challenge verification'.format(domain))
+    def _verify_challenge(self, url, domain, directory=None):
+        """Verify challenge for domain"""
+        self.log.info("waiting for {0} challenge verification".format(domain))
         checks_count = 60
         while True:
             checks_count -= 1
             if checks_count <= 0:
-                self.log.error('reached waiting limit')
+                self.log.error("reached waiting limit")
                 sys.exit(1)
-            challenge_status = json.loads(urlopen(url).read().decode('utf8'))
-            if challenge_status['status'] == "pending":
+            challenge_status = json.loads(
+                self._send_signed_request(url, "", directory)[1]
+            )
+            if challenge_status["status"] == "pending":
                 time.sleep(5)
                 continue
-            elif challenge_status['status'] == "valid":
-                self.log.info('{0} verified!'.format(domain))
+            elif challenge_status["status"] == "valid":
+                self.log.info("{0} verified!".format(domain))
                 break
-            self.log.error('{0} challenge did not pass: {1}'.format(domain, challenge_status))
+            self.log.error(
+                "{0} challenge did not pass: {1}".format(domain, challenge_status)
+            )
             sys.exit(1)
 
     @staticmethod
@@ -309,7 +358,7 @@ server {{
             challenge key
         """
         for challenge in challenges:
-            if challenge['type'] == challenge_type:
+            if challenge["type"] == challenge_type:
                 return challenge
 
     @staticmethod

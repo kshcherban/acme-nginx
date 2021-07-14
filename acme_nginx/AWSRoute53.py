@@ -4,7 +4,7 @@ import boto3
 class AWSRoute53(object):
     def __init__(self):
         self.session = boto3.Session()
-        self.client = self.session.client('route53')
+        self.client = self.session.client("route53")
 
     def determine_domain(self, domain):
         """
@@ -14,15 +14,15 @@ class AWSRoute53(object):
         Returns:
             zone_id, string, hosted zone id of matching domain
         """
-        if not domain.endswith('.'):
-            domain = domain + '.'
+        if not domain.endswith("."):
+            domain = domain + "."
         # use paginator to iterate over all hosted zones
-        paginator = self.client.get_paginator('list_hosted_zones')
+        paginator = self.client.get_paginator("list_hosted_zones")
         # https://github.com/boto/botocore/issues/1535 result_key_iters is undocumented
         for page in paginator.paginate().result_key_iters():
             for result in page:
-                if result['Name'] in domain:
-                    return result['Id']
+                if result["Name"] in domain:
+                    return result["Id"]
 
     def create_record(self, name, data, domain):
         """
@@ -36,30 +36,26 @@ class AWSRoute53(object):
         """
         zone_id = self.determine_domain(domain)
         if not zone_id:
-            raise Exception('Hosted zone for domain {0} not found'.format(domain))
+            raise Exception("Hosted zone for domain {0} not found".format(domain))
         response = self.client.change_resource_record_sets(
             HostedZoneId=zone_id,
             ChangeBatch={
-                'Changes': [
+                "Changes": [
                     {
-                        'Action': 'UPSERT',
-                        'ResourceRecordSet': {
-                            'Name': name,
-                            'Type': 'TXT',
-                            'TTL': 60,
-                            'ResourceRecords': [
-                                {
-                                    'Value': '"{0}"'.format(data)
-                                }
-                            ]
-                        }
+                        "Action": "UPSERT",
+                        "ResourceRecordSet": {
+                            "Name": name,
+                            "Type": "TXT",
+                            "TTL": 60,
+                            "ResourceRecords": [{"Value": '"{0}"'.format(data)}],
+                        },
                     }
                 ]
-            }
+            },
         )
-        waiter = self.client.get_waiter('resource_record_sets_changed')
-        waiter.wait(Id=response['ChangeInfo']['Id'])
-        return {'name': name, 'data': data}
+        waiter = self.client.get_waiter("resource_record_sets_changed")
+        waiter.wait(Id=response["ChangeInfo"]["Id"])
+        return {"name": name, "data": data}
 
     def delete_record(self, record, domain):
         """
@@ -72,20 +68,18 @@ class AWSRoute53(object):
         self.client.change_resource_record_sets(
             HostedZoneId=zone_id,
             ChangeBatch={
-                'Changes': [
+                "Changes": [
                     {
-                        'Action': 'DELETE',
-                        'ResourceRecordSet': {
-                            'Name': record['name'],
-                            'Type': 'TXT',
-                            'TTL': 60,
-                            'ResourceRecords': [
-                                {
-                                    'Value': '"{0}"'.format(record['data'])
-                                }
-                            ]
-                        }
+                        "Action": "DELETE",
+                        "ResourceRecordSet": {
+                            "Name": record["name"],
+                            "Type": "TXT",
+                            "TTL": 60,
+                            "ResourceRecords": [
+                                {"Value": '"{0}"'.format(record["data"])}
+                            ],
+                        },
                     }
                 ]
-            }
+            },
         )

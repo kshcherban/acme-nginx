@@ -9,26 +9,29 @@ except ImportError:
     from urllib2 import HTTPError
 
 
-class DigitalOcean(object):
+class Cloudflare(object):
     def __init__(self):
         self.token = getenv("API_TOKEN")
-        self.api = "https://api.digitalocean.com/v2/domains"
+        self.api = "https://api.cloudflare.com/client/v4"
         if not self.token:
             raise Exception("API_TOKEN not found in environment")
 
     def determine_domain(self, domain):
-        """Determine registered domain in API"""
+        """Determine registered domain in API
+        Returns zone id
+        """
         request_headers = {
             "Content-Type": "application/json",
             "Authorization": "Bearer {0}".format(self.token),
         }
-        response = urlopen(Request(self.api, headers=request_headers))
+        api = f"{self.api}/zones?name={domain}"
+        response = urlopen(Request(api, headers=request_headers))
         if response.getcode() != 200:
             raise Exception(json.loads(response.read().decode("utf8")))
-        domains = json.loads(response.read().decode("utf8"))["domains"]
+        domains = json.loads(response.read().decode("utf8"))["result"]
         for d in domains:
             if d["name"] in domain:
-                return d["name"]
+                return d["id"]
 
     def create_record(self, name, data, domain):
         """
@@ -38,15 +41,21 @@ class DigitalOcean(object):
             data, string, record data
             domain, string, dns domain
         Return:
-            record_id, int, created record id
+            record_id, string, created record id
         """
-        registered_domain = self.determine_domain(domain)
-        api = self.api + "/" + registered_domain + "/records"
+        zone_id = self.determine_domain(domain)
+        api = f"{self.api}/zones/{zone_id}/dns_records"
         request_headers = {
             "Content-Type": "application/json",
             "Authorization": "Bearer {0}".format(self.token),
         }
-        request_data = {"type": "TXT", "ttl": 300, "name": name, "data": data}
+        request_data = {
+            "type": "TXT",
+            "ttl": 300,
+            "name": name,
+            "content": data,
+            "proxied": False,
+        }
         try:
             response = urlopen(
                 Request(
@@ -57,19 +66,19 @@ class DigitalOcean(object):
             )
         except HTTPError as e:
             raise Exception(e.read().decode("utf8"))
-        if response.getcode() != 201:
+        if response.getcode() != 200:
             raise Exception(json.loads(response.read().decode("utf8")))
-        return json.loads(response.read().decode("utf8"))["domain_record"]["id"]
+        return json.loads(response.read().decode("utf8"))["result"]["id"]
 
     def delete_record(self, record, domain):
         """
         Delete DNS record
         Params:
-            record, int, record id number
+            record, string, record id number
             domain, string, dns domain
         """
-        registered_domain = self.determine_domain(domain)
-        api = self.api + "/" + registered_domain + "/records/" + str(record)
+        zone_id = self.determine_domain(domain)
+        api = f"{self.api}/zones/{zone_id}/dns_records/{record}"
         request_headers = {
             "Content-Type": "application/json",
             "Authorization": "Bearer {0}".format(self.token),
@@ -83,5 +92,5 @@ class DigitalOcean(object):
             response = urlopen(request)
         except HTTPError as e:
             raise Exception(e.read().decode("utf8"))
-        if response.getcode() != 204:
+        if response.getcode() != 200:
             raise Exception(json.loads(response.read().decode("utf8")))

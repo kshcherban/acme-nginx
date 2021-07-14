@@ -16,8 +16,8 @@ Simple way to get SSL certificates for free.
 
 ## Features
 
-* Supports both Python 2 and Python 3
-* Works with both ACMEv1 and ACMEv2 protocols
+* Supports both Python 2 (deprecated) and Python 3
+* Works with both ACMEv1 (deprecated) and ACMEv2 protocols
 * Can issue [wildcard certificates](https://en.wikipedia.org/wiki/Wildcard_certificate)!
 * Easy to use and extend
 
@@ -33,7 +33,7 @@ to send `SIGHUP` to it during challenge completion.
 As you may not trust this script feel free to check source code,
 it's under 700 lines of code.
 
-Script should be run as root on host with running nginx server.
+Script should be run as root on host with running nginx server if you use http verification or if you use DNS verification as a regular user.
 Domain for which you request certificate should point to that host's IP and port
 80 should be available from outside if you use HTTP challenge.
 Script can generate all keys for you if you don't set them with command line arguments.
@@ -46,16 +46,20 @@ Should work with Python >= 2.6
 
 ## ACME v2
 
-ACME v2 requires more logic so it's not as small as acme v1 script.
+ACME v2 requires more logic so it's not as small as ACME v1 script.
 
 ACME v2 is supported partially: only `http-01` and `dns-01` challenges.
 Check https://tools.ietf.org/html/draft-ietf-acme-acme-07#section-9.7.6
 
 New protocol is used by default.
 
-`http-01` challenge is passed exactly as in v1 protocol realisation.
+`http-01` challenge is passed exactly as in v1 protocol realization.
 
-`dns-01` currently supports only DigitalOcean, AWS Route53 DNS providers.
+`dns-01` currently supports following providers:
+
+-  DigitalOcean
+- AWS Route53
+- Cloudflare
 
 Technically nginx is not needed for this type of challenge but script still calls nginx reload by default
 because it assumes that you store certificates on the same server where you issue
@@ -65,7 +69,7 @@ AWS Route53 uses `default` profile in session, specifying profile works with env
 Please check https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#environment-variable-configuration
 
 In case you want to add support of different DNS providers your contribution is 
-highly apprectiated.
+highly appreciated.
 
 Wildcard certificates can not be issued with non-wildcard for the same domain.
 I.e. it's not possible to issue certificates for `*.example.com` and
@@ -78,21 +82,35 @@ Only HTTP challenge is supported at the moment.
 
 ## Installation
 
-Please be informed that the quickiest and easiest way of installation is to use your OS
-installation way because Python way includes compilation of dependencies that
+Python 2  installation may require compilation of dependencies that
 may take much time and CPU resources and may require you to install all build
 dependencies.
 
-### Fastest way
+### Preferred way
 
-Just download executable compiled with [pyinstaller](https://github.com/pyinstaller/pyinstaller).
+Using [poetry](https://python-poetry.org/). 
 
-```
-wget https://github.com/kshcherban/acme-nginx/releases/download/v0.1.2/acme-nginx
-chmod +x acme-nginx
-```
+1. First [install](https://python-poetry.org/docs/) poetry:
 
-### Python way
+   ```bash
+   curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3 -
+   source ~/.poetry/env
+   ```
+
+2. Clone acme-nginx:
+
+   ```bash
+   git clone https://github.com/kshcherban/acme-nginx
+   ```
+
+3. Install it:
+
+   ```bash
+   cd acme-nginx
+   poetry install
+   ```
+
+### Python pip way
 
 Automatically
 ```
@@ -123,8 +141,6 @@ docker run --name acme acme-nginx
 docker cp acme:/usr/bin/acme-runner acme-nginx
 docker rm acme
 ```
-
-
 
 ### Debian/Ubuntu way
 
@@ -173,13 +189,12 @@ Oct 12 23:42:23 Removing /etc/nginx/sites-enabled/letsencrypt and sending HUP to
 Certificate was generated into `/etc/ssl/private/letsencrypt-domain.pem`
 
 You can now configure nginx to use it:
-```
+```nginx
 server {
   listen 443;
   ssl on;
   ssl_certificate /etc/ssl/private/letsencrypt-domain.pem;
   ssl_certificate_key /etc/ssl/private/letsencrypt-domain.key;
-  ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
   ...
 ```
 
@@ -199,7 +214,7 @@ sudo acme-nginx \
 ### Wildcard certificates
 
 For wildcard certificate you need to have your domain managed by DNS provider
-with API. Currently only [DigitalOcean DNS](https://www.digitalocean.com/docs/networking/dns/) and
+with API. Currently only [DigitalOcean DNS](https://www.digitalocean.com/docs/networking/dns/), [Cloudflare](https://cloudflare.com) and
 [AWS Route53](https://aws.amazon.com/route53/) are supported.
 
 Example how to get wildcard certificate without nginx
@@ -211,11 +226,24 @@ sudo acme-nginx --no-reload-nginx --dns-provider route53 -d "*.example.com"
 
 Please create and export your DO API token as `API_TOKEN` env variable.
 Now you can generate wildcard certificate
-```
+
+```bash
 sudo su -
 export API_TOKEN=yourDigitalOceanApiToken
 acme-nginx --dns-provider digitalocean -d '*.example.com'
 ```
+
+### Cloudflare
+
+[Create API token](https://dash.cloudflare.com/profile/api-tokens) first. Then export it as `API_TOKEN` environment variable and use like this:
+
+```bash
+sudo su -
+export API_TOKEN=yourCloudflareApiToken
+acme-nginx --dns-provider cloudflare -d '*.example.com'
+```
+
+
 
 ### Debug
 
