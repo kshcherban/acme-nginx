@@ -17,7 +17,7 @@ except ImportError:
     from urllib2 import urlopen, Request  # Python 2
 
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"
 
 
 class Acme(object):
@@ -78,9 +78,9 @@ class Acme(object):
                     cert.get_notAfter().decode(encoding), date_format
                 )
                 now = datetime.now()
-                # self.log.info( 'x509: {0} {1} {2}'.format(cert, not_before, not_after) )
-                # certTime = datetime.fromtimestamp(os.path.getmtime(self.cert_path))
-                # certTimeThreshold = certTime + timedelta(days=self.renew_days)
+                self.log.debug(
+                    f"x509: {cert}, not_before: {not_before}, not_after: {not_after}"
+                )
                 certTimeThreshold = not_after - timedelta(days=self.renew_days)
 
                 self.IsOutOfDate = (
@@ -100,7 +100,7 @@ class Acme(object):
                             self.cert_path
                         )
                     )
-            except:
+            except Exception:
                 pass
 
     def _reload_nginx(self):
