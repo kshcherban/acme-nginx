@@ -16,7 +16,6 @@ Simple way to get SSL certificates for free.
 
 ## Features
 
-* Supports both Python 2 (deprecated) and Python 3
 * Works with both ACMEv1 (deprecated) and ACMEv2 protocols
 * Can issue [wildcard certificates](https://en.wikipedia.org/wiki/Wildcard_certificate)!
 * Easy to use and extend
@@ -42,7 +41,7 @@ You can specify as many alternative domain names as you wish.
 The result PEM file is a **certificate chain** containing your signed
 certificate and letsencrypt signed chain. You can use it with nginx.
 
-Should work with Python >= 2.6
+Should work with Python >= 3.6
 
 ## ACME v2
 
@@ -82,10 +81,6 @@ Only HTTP challenge is supported at the moment.
 
 ## Installation
 
-Python 2  installation may require compilation of dependencies that
-may take much time and CPU resources and may require you to install all build
-dependencies.
-
 ### Preferred way
 
 Using [poetry](https://python-poetry.org/). 
@@ -114,7 +109,7 @@ Using [poetry](https://python-poetry.org/).
 
 Automatically
 ```
-pip install acme-nginx
+pip3 install acme-nginx
 ```
 
 or manually

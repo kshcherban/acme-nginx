@@ -2,7 +2,7 @@
 
 from setuptools import setup, find_packages
 
-p_version = "0.3.1"
+p_version = "0.3.2"
 
 with open("README.md") as f:
     long_description = f.read()
@@ -33,9 +33,8 @@ setup(
     ],
     install_requires=[
         "pyOpenSSL~=20.0",
-        "pycrypto~=2.6.1",
+        "pycryptodome~=3.14",
         "boto3~=1.17",
-        "cryptography<=10.0",
     ],
     entry_points={
         "console_scripts": [
