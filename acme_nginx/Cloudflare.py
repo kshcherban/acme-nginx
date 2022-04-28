@@ -24,7 +24,7 @@ class Cloudflare(object):
             "Content-Type": "application/json",
             "Authorization": "Bearer {0}".format(self.token),
         }
-        api = f"{self.api}/zones?name={domain}"
+        api = "{0}/zones?name={1}".format(self.api, domain)
         response = urlopen(Request(api, headers=request_headers))
         if response.getcode() != 200:
             raise Exception(json.loads(response.read().decode("utf8")))
@@ -44,7 +44,7 @@ class Cloudflare(object):
             record_id, string, created record id
         """
         zone_id = self.determine_domain(domain)
-        api = f"{self.api}/zones/{zone_id}/dns_records"
+        api = "{0}/zones/{1}/dns_records".format(self.api, zone_id)
         request_headers = {
             "Content-Type": "application/json",
             "Authorization": "Bearer {0}".format(self.token),
@@ -78,7 +78,7 @@ class Cloudflare(object):
             domain, string, dns domain
         """
         zone_id = self.determine_domain(domain)
-        api = f"{self.api}/zones/{zone_id}/dns_records/{record}"
+        api = "{0}/zones/{1}/dns_records/{2}".format(self.api, zone_id, record)
         request_headers = {
             "Content-Type": "application/json",
             "Authorization": "Bearer {0}".format(self.token),

@@ -17,7 +17,7 @@ except ImportError:
     from urllib2 import urlopen, Request  # Python 2
 
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 
 class Acme(object):
@@ -79,7 +79,9 @@ class Acme(object):
                 )
                 now = datetime.now()
                 self.log.debug(
-                    f"x509: {cert}, not_before: {not_before}, not_after: {not_after}"
+                    "x509: {0}, not_before: {1}, not_after: {2}".format(
+                        cert, not_before, not_after
+                    )
                 )
                 certTimeThreshold = not_after - timedelta(days=self.renew_days)
 
