@@ -195,7 +195,7 @@ server {{
             key = fd.read()
         pk = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, key)
         req.set_pubkey(pk)
-        req.set_version(2)
+        req.set_version(0)
         req.sign(pk, "sha256")
         return OpenSSL.crypto.dump_certificate_request(
             OpenSSL.crypto.FILETYPE_ASN1, req
