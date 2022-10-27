@@ -102,6 +102,10 @@ class AcmeV2(Acme):
         )
         self.log.debug(order)
         order = json.loads(order)
+        if code >= 400:
+            self.log.error("failed to create order")
+            self.log.error(json.dumps(order))
+            sys.exit(1)
         self.log.info("order created")
         for url in order["authorizations"]:
             order_data = self._send_signed_request(url, "", directory)
