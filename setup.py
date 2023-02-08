@@ -33,7 +33,7 @@ setup(
     ],
     install_requires=[
         "pyOpenSSL~=20.0",
-        "cryptography==37.0.4",
+        "cryptography==39.0.1",
         "pycryptodome~=3.14",
         "boto3~=1.17",
     ],
