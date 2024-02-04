@@ -114,8 +114,6 @@ def main():
             api_url = "https://acme-staging-v02.api.letsencrypt.org/directory"
         else:
             api_url = "https://acme-v02.api.letsencrypt.org/directory"
-    print(api_url)
-    print(args.skip_reload)
     acme = Acme(
         api_url=api_url,
         logger=log,
