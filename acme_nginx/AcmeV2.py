@@ -9,7 +9,8 @@ except ImportError:
     from urllib2 import urlopen, Request  # Python 2
 from .Acme import Acme
 from .DigitalOcean import DigitalOcean
-from .AWSRoute53 import AWSRoute53
+
+# from .AWSRoute53 import AWSRoute53
 from .Cloudflare import Cloudflare
 
 
@@ -71,7 +72,8 @@ class AcmeV2(Acme):
         self.log.debug("{0}, {1}, {2}".format(code, result, headers))
         if code > 399:
             self.log.error("error signing certificate: {0} {1}".format(code, result))
-            self._reload_nginx()
+            if not self.skip_nginx_reload:
+                self._reload_nginx()
             sys.exit(1)
         self.log.info("certificate signed!")
         self.log.info("downloading certificate")
@@ -119,6 +121,7 @@ class AcmeV2(Acme):
             self.log.info("adding nginx virtual host and completing challenge")
             try:
                 challenge_dir = self._write_vhost()
+                print(challenge_dir, token, thumbprint)
                 self._write_challenge(challenge_dir, token, thumbprint)
             except Exception as e:
                 self.log.error(
@@ -140,7 +143,8 @@ class AcmeV2(Acme):
                 self._cleanup(
                     ["{0}/{1}".format(challenge_dir, token), self.vhost, challenge_dir]
                 )
-                self._reload_nginx()
+                if not self.skip_nginx_reload:
+                    self._reload_nginx()
         self._sign_certificate(order, directory)
 
     def solve_dns_challenge(self, directory, client):
@@ -217,7 +221,8 @@ class AcmeV2(Acme):
             if self.dns_provider == "digitalocean":
                 dns_client = DigitalOcean()
             elif self.dns_provider == "route53":
-                dns_client = AWSRoute53()
+                # dns_client = AWSRoute53()
+                pass
             elif self.dns_provider == "cloudflare":
                 dns_client = Cloudflare()
             self.solve_dns_challenge(directory, dns_client)

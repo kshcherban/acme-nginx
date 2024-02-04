@@ -139,7 +139,8 @@ server {{
         with open(self.vhost, "w") as fd:
             fd.write(vhost_data)
         os.chmod(self.vhost, 0o644)
-        self._reload_nginx()
+        if not self.skip_nginx_reload:
+            self._reload_nginx()
         return challenge_file
 
     def _write_challenge(self, challenge_dir, token, thumbprint):
