@@ -2,7 +2,7 @@
 
 from setuptools import setup, find_packages
 
-p_version = "0.3.4"
+p_version = "0.3.5"
 
 with open("README.md") as f:
     long_description = f.read()
@@ -32,10 +32,10 @@ setup(
         "wildcard",
     ],
     install_requires=[
-        "pyOpenSSL~=20.0",
-        "cryptography==39.0.1",
+        "pyOpenSSL~=24.0",
+        "cryptography==41.0.7",
         "pycryptodome~=3.14",
-        "boto3~=1.17",
+        "boto3~=1.34",
     ],
     entry_points={
         "console_scripts": [

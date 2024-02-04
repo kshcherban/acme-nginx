@@ -1,4 +1,4 @@
-FROM python:3.7 as build
+FROM python:3.11 as build
 
 WORKDIR /opt
 RUN pip install pyinstaller
@@ -9,7 +9,7 @@ RUN pip install -r /opt/requirements.txt && \
     pyinstaller -sF ./acme-runner.py
 
 
-FROM python:3.7-slim
+FROM python:3.11-slim
 
 COPY --from=build /opt /opt
 
