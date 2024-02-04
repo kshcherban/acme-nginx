@@ -143,7 +143,6 @@ class AcmeV2(Acme):
             self.log.info("adding nginx virtual host and completing challenge")
             try:
                 challenge_dir = self._write_vhost()
-                print(challenge_dir, token, thumbprint)
                 self._write_challenge(challenge_dir, token, thumbprint)
             except Exception as e:
                 self.log.error(
@@ -246,7 +245,6 @@ class AcmeV2(Acme):
                 dns_client = DigitalOcean()
             elif self.dns_provider == "route53":
                 dns_client = AWSRoute53()
-                pass
             elif self.dns_provider == "cloudflare":
                 dns_client = Cloudflare()
             self.solve_dns_challenge(directory, dns_client)
