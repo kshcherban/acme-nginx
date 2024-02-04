@@ -1,4 +1,4 @@
 pyOpenSSL>=0.13
-cryptography==37.0.4
+cryptography==39.0.1
 pycryptodome>=3.14
 boto3~=1.9.30

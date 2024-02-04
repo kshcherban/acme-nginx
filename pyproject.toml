@@ -1,15 +1,16 @@
 [tool.poetry]
 name = "acme-nginx"
-version = "0.3.3"
+version = "0.3.4"
 description = "Python library/program to create LetsEncrypt SSL certificates"
 authors = ["Konstantin Shcherban <insider@sudoers.dev>"]
 license = "GPL-3.0"
 
 [tool.poetry.dependencies]
-python = "^3.6"
-pyOpenSSL = "^20.0"
+python = "^3.7"
+pyOpenSSL = "^24.0"
 pycryptodome = "^3.14"
 boto3 = "~1.17"
+cryptography = "~41.0"
 
 [tool.poetry.dev-dependencies]
 
