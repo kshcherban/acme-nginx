@@ -2,6 +2,7 @@ import hashlib
 import json
 import re
 import sys
+import time
 
 try:
     from urllib.request import urlopen, Request  # Python 3
@@ -9,6 +10,7 @@ except ImportError:
     from urllib2 import urlopen, Request  # Python 2
 from .Acme import Acme
 from .DigitalOcean import DigitalOcean
+
 from .AWSRoute53 import AWSRoute53
 from .Cloudflare import Cloudflare
 
@@ -60,22 +62,44 @@ class AcmeV2(Acme):
             sys.exit(1)
         return directory
 
+    # helper function - poll until order status is valid
+    def _poll_until_not(
+        self, url, payload, directory, pending_statuses=["pending", "processing"]
+    ):
+        result, t0 = None, time.time()
+        while (
+            result is None
+            or result["status"] in pending_statuses
+            # or result.get("certificate") is None
+        ):
+            assert time.time() - t0 < 3600, "Polling timeout"  # 1 hour timeout
+            time.sleep(0 if result is None else 2)
+            _, raw_result, _ = self._send_signed_request(url, payload, directory)
+            result = json.loads(raw_result)
+        return result
+
     def _sign_certificate(self, order, directory):
         """Sign certificate"""
         self.log.info("signing certificate")
         csr = self.create_csr()
         payload = {"csr": self._b64(csr)}
-        code, result, headers = self._send_signed_request(
+        code, finalize_result, headers = self._send_signed_request(
             url=order["finalize"], payload=payload, directory=directory
         )
-        self.log.debug("{0}, {1}, {2}".format(code, result, headers))
+        self.log.debug("{0}, {1}, {2}".format(code, finalize_result, headers))
         if code > 399:
-            self.log.error("error signing certificate: {0} {1}".format(code, result))
-            self._reload_nginx()
+            self.log.error(
+                "error signing certificate: {0} {1}".format(code, finalize_result)
+            )
+            if not self.skip_nginx_reload:
+                self._reload_nginx()
             sys.exit(1)
         self.log.info("certificate signed!")
+        # applies to staging only atm
+        self.log.info("waiting for certificate to be ready")
+        result = self._poll_until_not(headers["Location"], "", directory)
         self.log.info("downloading certificate")
-        certificate_url = json.loads(result)["certificate"]
+        certificate_url = result["certificate"]
         certificate_pem = self._send_signed_request(certificate_url, "", directory)[1]
         self.log.info("writing result file in {0}".format(self.cert_path))
         try:
@@ -119,6 +143,7 @@ class AcmeV2(Acme):
             self.log.info("adding nginx virtual host and completing challenge")
             try:
                 challenge_dir = self._write_vhost()
+                print(challenge_dir, token, thumbprint)
                 self._write_challenge(challenge_dir, token, thumbprint)
             except Exception as e:
                 self.log.error(
@@ -140,7 +165,8 @@ class AcmeV2(Acme):
                 self._cleanup(
                     ["{0}/{1}".format(challenge_dir, token), self.vhost, challenge_dir]
                 )
-                self._reload_nginx()
+                if not self.skip_nginx_reload:
+                    self._reload_nginx()
         self._sign_certificate(order, directory)
 
     def solve_dns_challenge(self, directory, client):
@@ -150,6 +176,8 @@ class AcmeV2(Acme):
             directory, dict, directory data from acme server
             client, object, dns provider client implementation
         """
+        # no need to reload nginx for DNS challenge
+        self.skip_nginx_reload = True
         self.log.info("acmev2 dns challenge")
         self.log.info("preparing new order")
         order_payload = {
@@ -218,6 +246,7 @@ class AcmeV2(Acme):
                 dns_client = DigitalOcean()
             elif self.dns_provider == "route53":
                 dns_client = AWSRoute53()
+                pass
             elif self.dns_provider == "cloudflare":
                 dns_client = Cloudflare()
             self.solve_dns_challenge(directory, dns_client)

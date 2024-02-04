@@ -17,7 +17,7 @@ except ImportError:
     from urllib2 import urlopen, Request  # Python 2
 
 
-__version__ = "0.3.3"
+__version__ = "0.3.4"
 
 
 class Acme(object):
@@ -139,7 +139,8 @@ server {{
         with open(self.vhost, "w") as fd:
             fd.write(vhost_data)
         os.chmod(self.vhost, 0o644)
-        self._reload_nginx()
+        if not self.skip_nginx_reload:
+            self._reload_nginx()
         return challenge_file
 
     def _write_challenge(self, challenge_dir, token, thumbprint):

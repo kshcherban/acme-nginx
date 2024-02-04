@@ -56,7 +56,7 @@ New protocol is used by default.
 
 `dns-01` currently supports following providers:
 
--  DigitalOcean
+- DigitalOcean
 - AWS Route53
 - Cloudflare
 
