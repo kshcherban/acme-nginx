@@ -1,4 +1,4 @@
-FROM python:3.11 as build
+FROM python:3.11 AS build
 
 WORKDIR /opt
 RUN pip install pyinstaller
