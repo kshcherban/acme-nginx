@@ -1,6 +1,5 @@
 import argparse
 import logging
-from acme_nginx.AcmeV1 import AcmeV1
 from acme_nginx.AcmeV2 import AcmeV2
 
 
@@ -64,9 +63,6 @@ def set_arguments():
         help="don't delete intermediate files for debugging",
     )
     parser.add_argument(
-        "--acme-v1", dest="acmev1", action="store_true", help="use ACME v1 api version"
-    )
-    parser.add_argument(
         "--dns-provider",
         dest="dns_provider",
         choices=["digitalocean", "route53", "cloudflare"],
@@ -102,19 +98,11 @@ def main():
         format="%(asctime)s - %(levelname)s - %(message)s", level=log_level
     )
     log = logging.getLogger("acme")
-    if args.acmev1:
-        Acme = AcmeV1
-        if args.staging:
-            api_url = "https://acme-staging.api.letsencrypt.org"
-        else:
-            api_url = "https://acme-v01.api.letsencrypt.org"
+    if args.staging:
+        api_url = "https://acme-staging-v02.api.letsencrypt.org/directory"
     else:
-        Acme = AcmeV2
-        if args.staging:
-            api_url = "https://acme-staging-v02.api.letsencrypt.org/directory"
-        else:
-            api_url = "https://acme-v02.api.letsencrypt.org/directory"
-    acme = Acme(
+        api_url = "https://acme-v02.api.letsencrypt.org/directory"
+    acme = AcmeV2(
         api_url=api_url,
         logger=log,
         domains=args.domain,

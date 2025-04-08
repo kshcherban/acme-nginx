@@ -16,7 +16,7 @@ Simple way to get SSL certificates for free.
 
 ## Features
 
-* Works with both ACMEv1 (deprecated) and ACMEv2 protocols
+* Simply works with running nginx or without it (DNS validation only)
 * Can issue [wildcard certificates](https://en.wikipedia.org/wiki/Wildcard_certificate)!
 * Easy to use and extend
 
@@ -25,12 +25,11 @@ Simple way to get SSL certificates for free.
 This is [ACME](https://ietf-wg-acme.github.io/acme/) client implementation in
 Python originally based on https://github.com/diafygi/acme-tiny code.
 Now completely different.
-It's written in pure Python depends on pyOpenSSL and pycrypto
+It's written in pure Python depends on [cryptography](https://cryptography.io/en/latest/)
 and the only binary it calls is **ps** to determine nginx master process id
 to send `SIGHUP` to it during challenge completion.
 
-As you may not trust this script feel free to check source code,
-it's under 700 lines of code.
+As you may not trust this script feel free to check source code, it's small, under 1000 lines of code in total.
 
 Script should be run as root on host with running nginx server if you use http verification or if you use DNS verification as a regular user.
 Domain for which you request certificate should point to that host's IP and port
@@ -41,16 +40,12 @@ You can specify as many alternative domain names as you wish.
 The result PEM file is a **certificate chain** containing your signed
 certificate and letsencrypt signed chain. You can use it with nginx.
 
-Should work with Python >= 3.6
+Should work with Python >= 3.9.2
 
 ## ACME v2
 
-ACME v2 requires more logic so it's not as small as ACME v1 script.
-
 ACME v2 is supported partially: only `http-01` and `dns-01` challenges.
 Check https://tools.ietf.org/html/draft-ietf-acme-acme-07#section-9.7.6
-
-New protocol is used by default.
 
 `http-01` challenge is passed exactly as in v1 protocol realization.
 
@@ -76,8 +71,7 @@ I.e. it's not possible to issue certificates for `*.example.com` and
 
 ## ACME v1
 
-Still supported with flag `--acme-v1`.
-Only HTTP challenge is supported at the moment.
+Is deprecated and not supported by LetsEncrypt anymore, so it was removed from that project too.
 
 ## Installation
 
@@ -250,10 +244,10 @@ Execute `acme-nginx --help` to see all available flags and their default values.
 
 ### Renewal
 
-Personally i use following cronjob to renew certificates of my blog. Here's contents
+Personally I used the following cronjob to renew certificates of my blog. Here's content
 of `/etc/cron.d/renew-cert`
 
 ```
 MAILTO=insider@prolinux.org
-12 11 10 * * root timeout -k 600 -s 9 3600 /usr/local/bin/acme-nginx -d prolinux.org -d www.prolinux.org >> /var/log/letsencrypt.log 2>&1 || echo "Failed to renew certificate"
+12 11 10 * * root timeout -k 600 -s 9 3600 /usr/local/bin/acme-nginx -d prolinux.org -d www.prolinux.org --renew-days 33 >> /var/log/letsencrypt.log 2>&1 || echo "Failed to renew certificate"
 ```

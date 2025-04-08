@@ -4,10 +4,7 @@ import re
 import sys
 import time
 
-try:
-    from urllib.request import urlopen, Request  # Python 3
-except ImportError:
-    from urllib2 import urlopen, Request  # Python 2
+from urllib.request import urlopen, Request
 from .Acme import Acme
 from .DigitalOcean import DigitalOcean
 
@@ -68,8 +65,7 @@ class AcmeV2(Acme):
     ):
         result, t0 = None, time.time()
         while (
-            result is None
-            or result["status"] in pending_statuses
+            result is None or result["status"] in pending_statuses
             # or result.get("certificate") is None
         ):
             assert time.time() - t0 < 3600, "Polling timeout"  # 1 hour timeout
