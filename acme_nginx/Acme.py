@@ -5,7 +5,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from cryptography import x509
 from cryptography.x509.oid import NameOID
@@ -68,10 +68,10 @@ class Acme(object):
 
                 # Parse certificate using cryptography
                 cert = x509.load_pem_x509_certificate(cert_data)
-                not_before = cert.not_valid_before
-                not_after = cert.not_valid_after
+                not_before = cert.not_valid_before_utc
+                not_after = cert.not_valid_after_utc
 
-                now = datetime.now()
+                now = datetime.now(timezone.utc)
                 certTimeThreshold = not_after - timedelta(days=self.renew_days)
 
                 self.log.debug(
@@ -97,8 +97,8 @@ class Acme(object):
                             self.cert_path
                         )
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                raise e
 
     def _reload_nginx(self):
         """Reload nginx"""
@@ -167,7 +167,6 @@ server {{
                     encryption_algorithm=serialization.NoEncryption(),
                 )
             else:
-                # Raise error for unsupported key types
                 raise ValueError(
                     f"Unsupported key type: {key_type}, only RSA is supported"
                 )
@@ -334,7 +333,6 @@ server {{
             payload64 = ""
         else:
             payload64 = self._b64(json.dumps(payload).encode("utf8"))
-        # If not set then ACMEv1 is used
         if directory:
             # jwk and kid header fields are mutually exclusive
             if directory["_kid"]:
@@ -346,11 +344,6 @@ server {{
             ).headers["Replay-Nonce"]
             protected["url"] = url
             protected["alg"] = "RS256"  # set for compatibility
-        else:
-            protected = self._jws()
-            protected["nonce"] = urlopen(self.api_url + "/directory").headers[
-                "Replay-Nonce"
-            ]
         protected64 = self._b64(json.dumps(protected).encode("utf8"))
         signature = self._sign_message("{0}.{1}".format(protected64, payload64))
         data = json.dumps(
