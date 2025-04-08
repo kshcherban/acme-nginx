@@ -1,12 +1,8 @@
 import json
 from os import getenv
 
-try:
-    from urllib.request import urlopen, Request  # Python 3
-    from urllib.error import HTTPError
-except ImportError:
-    from urllib2 import urlopen, Request  # Python 2
-    from urllib2 import HTTPError
+from urllib.request import urlopen, Request
+from urllib.error import HTTPError
 
 
 class Cloudflare(object):

@@ -16,7 +16,7 @@ Simple way to get SSL certificates for free.
 
 ## Features
 
-* Works with both ACMEv1 (deprecated) and ACMEv2 protocols
+* Simply works with running nginx or without it (DNS validation only)
 * Can issue [wildcard certificates](https://en.wikipedia.org/wiki/Wildcard_certificate)!
 * Easy to use and extend
 
@@ -41,7 +41,7 @@ You can specify as many alternative domain names as you wish.
 The result PEM file is a **certificate chain** containing your signed
 certificate and letsencrypt signed chain. You can use it with nginx.
 
-Should work with Python >= 3.6
+Should work with Python >= 3.9.2
 
 ## ACME v2
 
@@ -76,8 +76,7 @@ I.e. it's not possible to issue certificates for `*.example.com` and
 
 ## ACME v1
 
-Still supported with flag `--acme-v1`.
-Only HTTP challenge is supported at the moment.
+Is deprecated and not supported by LetsEncrypt anymore.
 
 ## Installation
 
@@ -250,7 +249,7 @@ Execute `acme-nginx --help` to see all available flags and their default values.
 
 ### Renewal
 
-Personally i use following cronjob to renew certificates of my blog. Here's contents
+Personally I used the following cronjob to renew certificates of my blog. Here's content
 of `/etc/cron.d/renew-cert`
 
 ```

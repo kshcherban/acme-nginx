@@ -7,19 +7,14 @@ import tempfile
 import time
 from datetime import datetime, timedelta
 
-# Modern crypto imports
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
-from cryptography.hazmat.backends import default_backend
 import OpenSSL
 
-try:
-    from urllib.request import urlopen, Request  # Python 3
-except ImportError:
-    from urllib2 import urlopen, Request  # Python 2
+from urllib.request import urlopen, Request
 
 
-__version__ = "0.3.5"
+__version__ = "0.4.0"
 
 
 class Acme(object):
@@ -164,9 +159,7 @@ server {{
         except IOError:
             # Generate a new RSA key using cryptography
             if key_type == OpenSSL.crypto.TYPE_RSA:
-                key = rsa.generate_private_key(
-                    public_exponent=65537, key_size=bits, backend=default_backend()
-                )
+                key = rsa.generate_private_key(public_exponent=65537, key_size=bits)
                 private_key = key.private_bytes(
                     encoding=serialization.Encoding.PEM,
                     format=serialization.PrivateFormat.PKCS8,
@@ -248,7 +241,6 @@ server {{
         priv_key = serialization.load_pem_private_key(
             key_pem.encode() if isinstance(key_pem, str) else key_pem,
             password=None,
-            backend=default_backend(),
         )
 
         # Sign the message with proper padding and hashing
@@ -271,7 +263,6 @@ server {{
         priv_key = serialization.load_pem_private_key(
             key_pem.encode() if isinstance(key_pem, str) else key_pem,
             password=None,
-            backend=default_backend(),
         )
 
         if isinstance(priv_key, rsa.RSAPrivateKey):
@@ -303,7 +294,7 @@ server {{
         accountkey_json = json.dumps(
             self._jws()["jwk"], sort_keys=True, separators=(",", ":")
         )
-        digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
+        digest = hashes.Hash(hashes.SHA256())
         digest.update(accountkey_json.encode("utf8"))
         return self._b64(digest.finalize())
 
