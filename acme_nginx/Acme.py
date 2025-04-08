@@ -7,9 +7,10 @@ import tempfile
 import time
 from datetime import datetime, timedelta
 
+from cryptography import x509
+from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
-import OpenSSL
 
 from urllib.request import urlopen, Request
 
@@ -55,8 +56,6 @@ class Acme(object):
         self.cert_path = cert_path
         self.api_url = api_url
         self.log = logger
-        # LetsEncrypt Root CA certificate chain, needed for ACMEv1
-        self.chain = "https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem"
         self.dns_provider = dns_provider
         self.skip_nginx_reload = skip_nginx_reload
         self.renew_days = renew_days
@@ -64,23 +63,22 @@ class Acme(object):
         self.IsOutOfDate = True
         if self.renew_days:
             try:
-                cert = OpenSSL.crypto.load_certificate(
-                    OpenSSL.crypto.FILETYPE_PEM, open(self.cert_path).read()
-                )
-                date_format, encoding = "%Y%m%d%H%M%SZ", "ascii"
-                not_before = datetime.strptime(
-                    cert.get_notBefore().decode(encoding), date_format
-                )
-                not_after = datetime.strptime(
-                    cert.get_notAfter().decode(encoding), date_format
-                )
+                with open(self.cert_path, "rb") as cert_file:
+                    cert_data = cert_file.read()
+
+                # Parse certificate using cryptography
+                cert = x509.load_pem_x509_certificate(cert_data)
+                not_before = cert.not_valid_before
+                not_after = cert.not_valid_after
+
                 now = datetime.now()
+                certTimeThreshold = not_after - timedelta(days=self.renew_days)
+
                 self.log.debug(
                     "x509: {0}, not_before: {1}, not_after: {2}".format(
                         cert, not_before, not_after
                     )
                 )
-                certTimeThreshold = not_after - timedelta(days=self.renew_days)
 
                 self.IsOutOfDate = (
                     (not_before > now) or (not_after < now) or (certTimeThreshold < now)
@@ -143,12 +141,12 @@ server {{
         with open("{0}/{1}".format(challenge_dir, token), "w") as fd:
             fd.write("{0}.{1}".format(token, thumbprint))
 
-    def create_key(self, key_path, key_type=OpenSSL.crypto.TYPE_RSA, bits=2048):
+    def create_key(self, key_path, key_type=2, bits=2048):  # TYPE_RSA = 2
         """
         Return created private key and writes it into key_path
         Params:
             key_path, str, writable path for key
-            key_type, int, SSL key type
+            key_type, int, SSL key type (2 = RSA, 6 = EC) - using direct values instead of OpenSSL constants
             bits, int, the number of bits of the key
         Return:
             string with private key
@@ -157,20 +155,21 @@ server {{
             with open(key_path, "r") as fd:
                 private_key = fd.read()
         except IOError:
-            # Generate a new RSA key using cryptography
-            if key_type == OpenSSL.crypto.TYPE_RSA:
-                key = rsa.generate_private_key(public_exponent=65537, key_size=bits)
+            # Generate a new key using cryptography
+            if key_type == 2:  # RSA
+                key = rsa.generate_private_key(
+                    public_exponent=65537,
+                    key_size=bits,
+                )
                 private_key = key.private_bytes(
                     encoding=serialization.Encoding.PEM,
                     format=serialization.PrivateFormat.PKCS8,
                     encryption_algorithm=serialization.NoEncryption(),
                 )
             else:
-                # Use OpenSSL for other key types
-                key = OpenSSL.crypto.PKey()
-                key.generate_key(key_type, bits)
-                private_key = OpenSSL.crypto.dump_privatekey(
-                    OpenSSL.crypto.FILETYPE_PEM, key
+                # Raise error for unsupported key types
+                raise ValueError(
+                    f"Unsupported key type: {key_type}, only RSA is supported"
                 )
 
             self.log.info(
@@ -192,30 +191,36 @@ server {{
         Return:
             string with CSR in DER format
         """
-        sna = ", ".join(["DNS:{0}".format(i) for i in self.domains]).encode("utf8")
-        req = OpenSSL.crypto.X509Req()
-        req.get_subject().CN = self.domains[0]
-        req.add_extensions(
+        # Load the private key
+        with open(self.domain_key, "r") as fd:
+            key_pem = fd.read()
+
+        private_key = serialization.load_pem_private_key(
+            key_pem.encode() if isinstance(key_pem, str) else key_pem,
+            password=None,
+        )
+
+        # Create a name object for the subject
+        subject = x509.Name(
             [
-                OpenSSL.crypto.X509Extension(
-                    "subjectAltName".encode("utf8"), critical=False, value=sna
-                )
+                x509.NameAttribute(NameOID.COMMON_NAME, self.domains[0]),
             ]
         )
-        with open(self.domain_key, "r") as fd:
-            key = fd.read()
-        pk = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, key)
-        req.set_pubkey(pk)
-        req.set_version(0)
 
-        # OpenSSL's req.sign() is deprecated, but we need to sign the CSR
-        # Since this is complex to do with cryptography directly,
-        # we'll use OpenSSL but with a safer approach
-        req.sign(pk, "sha256")
+        # Create the alternative names extension
+        alt_names = [x509.DNSName(domain) for domain in self.domains]
+        san = x509.SubjectAlternativeName(alt_names)
 
-        return OpenSSL.crypto.dump_certificate_request(
-            OpenSSL.crypto.FILETYPE_ASN1, req
-        )
+        # Create CSR builder
+        builder = x509.CertificateSigningRequestBuilder()
+        builder = builder.subject_name(subject)
+        builder = builder.add_extension(san, critical=False)
+
+        # Sign the CSR with the private key
+        csr = builder.sign(private_key, hashes.SHA256())
+
+        # Return the CSR in DER format
+        return csr.public_bytes(serialization.Encoding.DER)
 
     @staticmethod
     def _b64(b):

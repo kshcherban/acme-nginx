@@ -32,9 +32,7 @@ setup(
         "wildcard",
     ],
     install_requires=[
-        "pyOpenSSL~=24.0",
         "cryptography~=42.0",
-        "pycryptodome~=3.14",
         "boto3~=1.34",
     ],
     entry_points={
