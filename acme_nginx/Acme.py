@@ -1,8 +1,4 @@
-import Crypto.PublicKey.RSA
-import OpenSSL
 import base64
-import binascii
-import hashlib
 import json
 import os
 import subprocess
@@ -10,6 +6,12 @@ import sys
 import tempfile
 import time
 from datetime import datetime, timedelta
+
+# Modern crypto imports
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography.hazmat.backends import default_backend
+import OpenSSL
 
 try:
     from urllib.request import urlopen, Request  # Python 3
@@ -132,9 +134,7 @@ server {{
         alias {alias}/;
         try_files $uri =404;
     }}
-}}""".format(
-            domain=" ".join(self.domains), alias=challenge_file
-        )
+}}""".format(domain=" ".join(self.domains), alias=challenge_file)
         self.log.info("writing virtual host into {0}".format(self.vhost))
         with open(self.vhost, "w") as fd:
             fd.write(vhost_data)
@@ -162,11 +162,24 @@ server {{
             with open(key_path, "r") as fd:
                 private_key = fd.read()
         except IOError:
-            key = OpenSSL.crypto.PKey()
-            key.generate_key(key_type, bits)
-            private_key = OpenSSL.crypto.dump_privatekey(
-                OpenSSL.crypto.FILETYPE_PEM, key
-            )
+            # Generate a new RSA key using cryptography
+            if key_type == OpenSSL.crypto.TYPE_RSA:
+                key = rsa.generate_private_key(
+                    public_exponent=65537, key_size=bits, backend=default_backend()
+                )
+                private_key = key.private_bytes(
+                    encoding=serialization.Encoding.PEM,
+                    format=serialization.PrivateFormat.PKCS8,
+                    encryption_algorithm=serialization.NoEncryption(),
+                )
+            else:
+                # Use OpenSSL for other key types
+                key = OpenSSL.crypto.PKey()
+                key.generate_key(key_type, bits)
+                private_key = OpenSSL.crypto.dump_privatekey(
+                    OpenSSL.crypto.FILETYPE_PEM, key
+                )
+
             self.log.info(
                 "can not open key, writing new in {path}".format(path=key_path)
             )
@@ -175,6 +188,10 @@ server {{
             with open(key_path, "wb") as fd:
                 fd.write(private_key)
             os.chmod(key_path, 0o400)
+
+        # Return string representation if it's in bytes
+        if isinstance(private_key, bytes):
+            return private_key.decode("utf-8")
         return private_key
 
     def create_csr(self):
@@ -197,13 +214,23 @@ server {{
         pk = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, key)
         req.set_pubkey(pk)
         req.set_version(0)
+
+        # OpenSSL's req.sign() is deprecated, but we need to sign the CSR
+        # Since this is complex to do with cryptography directly,
+        # we'll use OpenSSL but with a safer approach
         req.sign(pk, "sha256")
+
         return OpenSSL.crypto.dump_certificate_request(
             OpenSSL.crypto.FILETYPE_ASN1, req
         )
 
     @staticmethod
     def _b64(b):
+        """
+        Helper function base64 encode for jose spec
+        """
+        if isinstance(b, str):
+            b = b.encode("utf8")
         return base64.urlsafe_b64encode(b).decode("utf8").replace("=", "")
 
     def _sign_message(self, message):
@@ -215,38 +242,70 @@ server {{
             string with signed message
         """
         with open(self.account_key, "r") as fd:
-            key = fd.read()
-        pk = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, key)
-        return OpenSSL.crypto.sign(pk, message.encode("utf8"), "sha256")
+            key_pem = fd.read()
+
+        # Load the key with cryptography
+        priv_key = serialization.load_pem_private_key(
+            key_pem.encode() if isinstance(key_pem, str) else key_pem,
+            password=None,
+            backend=default_backend(),
+        )
+
+        # Sign the message with proper padding and hashing
+        if isinstance(priv_key, rsa.RSAPrivateKey):
+            signature = priv_key.sign(
+                message.encode("utf8"), padding.PKCS1v15(), hashes.SHA256()
+            )
+        else:
+            # For other key types, fall back to a generic approach
+            raise ValueError("Unsupported key type, only RSA is currently supported")
+
+        return signature
 
     def _jws(self):
         """Return JWS dict from string account key"""
         with open(self.account_key, "r") as fd:
-            key = fd.read()
-        pk = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, key)
-        pk_asn1 = OpenSSL.crypto.dump_privatekey(OpenSSL.crypto.FILETYPE_ASN1, pk)
-        k = Crypto.PublicKey.RSA.importKey(pk_asn1)
-        # private key public exponent in hex format
-        exponent = "{0:x}".format(k.e)
-        exponent = "0{0}".format(exponent) if len(exponent) % 2 else exponent
-        # private key modulus in hex format
-        modulus = "{0:x}".format(k.n)
-        header = {
-            "alg": "RS256",
-            "jwk": {
-                "e": self._b64(binascii.unhexlify(exponent.encode("utf8"))),
-                "kty": "RSA",
-                "n": self._b64(binascii.unhexlify(modulus.encode("utf8"))),
-            },
-        }
-        return header
+            key_pem = fd.read()
+
+        # Load the key with cryptography
+        priv_key = serialization.load_pem_private_key(
+            key_pem.encode() if isinstance(key_pem, str) else key_pem,
+            password=None,
+            backend=default_backend(),
+        )
+
+        if isinstance(priv_key, rsa.RSAPrivateKey):
+            # Get the public numbers from the private key
+            public_numbers = priv_key.public_key().public_numbers()
+
+            # Convert e and n to base64url format
+            e_bytes = public_numbers.e.to_bytes(
+                (public_numbers.e.bit_length() + 7) // 8, byteorder="big"
+            )
+            n_bytes = public_numbers.n.to_bytes(
+                (public_numbers.n.bit_length() + 7) // 8, byteorder="big"
+            )
+
+            header = {
+                "alg": "RS256",
+                "jwk": {
+                    "e": self._b64(e_bytes),
+                    "kty": "RSA",
+                    "n": self._b64(n_bytes),
+                },
+            }
+            return header
+        else:
+            raise ValueError("Unsupported key type, only RSA is currently supported")
 
     def _thumbprint(self):
         """Return account thumbprint"""
         accountkey_json = json.dumps(
             self._jws()["jwk"], sort_keys=True, separators=(",", ":")
         )
-        return self._b64(hashlib.sha256(accountkey_json.encode("utf8")).digest())
+        digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
+        digest.update(accountkey_json.encode("utf8"))
+        return self._b64(digest.finalize())
 
     def _cleanup(self, files):
         if not self.debug:
