@@ -26,6 +26,7 @@ class AcmeV2(Acme):
         except Exception as e:
             self.log.error("creating key {0} {1}".format(type(e).__name__, e))
             sys.exit(1)
+        self.log.info("Using api url: {0}".format(self.api_url))
         # directory is needed later for order placement
         directory = (
             urlopen(

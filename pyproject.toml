@@ -1,9 +1,17 @@
-[tool.poetry]
+[project]
 name = "acme-nginx"
-version = "0.4.0"
+version = "0.4.1"
 description = "Python library/program to create LetsEncrypt SSL certificates"
-authors = ["Konstantin Shcherban <insider@sudoers.dev>"]
+readme = "README.md"
+authors = [{ name = "Konstantin Shcherban", email = "insider@sudoers.dev"}]
 license = "GPL-3.0"
+
+[project.urls]
+homepage = "https://github.com/kshcherban/acme-nginx"
+repository = "https://github.com/kshcherban/acme-nginx"
+
+[project.scripts]
+acme-nginx = "acme_nginx.client:main"
 
 [tool.poetry.dependencies]
 python = ">=3.9.2,<3.14"
@@ -16,3 +24,4 @@ setuptools = ">=60"
 [build-system]
 requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
+

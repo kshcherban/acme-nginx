@@ -15,7 +15,7 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from urllib.request import urlopen, Request
 
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 
 class Acme(object):
