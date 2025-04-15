@@ -5,6 +5,11 @@ description = "Python library/program to create LetsEncrypt SSL certificates"
 readme = "README.md"
 authors = [{ name = "Konstantin Shcherban", email = "insider@sudoers.dev"}]
 license = "GPL-3.0"
+requires-python = ">=3.9.2,<3.14"
+dependencies = [
+    "boto3 ~= 1.34",
+    "cryptography ~= 42.0"
+]
 
 [project.urls]
 homepage = "https://github.com/kshcherban/acme-nginx"
@@ -13,13 +18,11 @@ repository = "https://github.com/kshcherban/acme-nginx"
 [project.scripts]
 acme-nginx = "acme_nginx.client:main"
 
-[tool.poetry.dependencies]
-python = ">=3.9.2,<3.14"
-boto3 = "~1.34"
-cryptography = "~42.0"
-
 [tool.poetry.group.dev.dependencies]
 setuptools = ">=60"
+
+[tool.poetry.group.test.dependencies]
+pytest = "~8.3"
 
 [build-system]
 requires = ["poetry-core>=2.0.0"]
