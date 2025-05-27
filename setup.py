@@ -32,7 +32,7 @@ setup(
         "wildcard",
     ],
     install_requires=[
-        "cryptography~=42.0",
+        "cryptography>=42,<45",
         "boto3~=1.34",
     ],
     entry_points={
