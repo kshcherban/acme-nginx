@@ -1,6 +1,8 @@
 [project]
 name = "acme-nginx"
-version = "0.4.1"
+version = "0.4.2"
+# TODO: Use dynamic versioning when uv supports it
+# dynamic = ["version"]
 description = "Python library/program to create LetsEncrypt SSL certificates"
 readme = "README.md"
 authors = [{ name = "Konstantin Shcherban", email = "insider@sudoers.dev"}]
@@ -18,13 +20,17 @@ repository = "https://github.com/kshcherban/acme-nginx"
 [project.scripts]
 acme-nginx = "acme_nginx.client:main"
 
-[tool.poetry.group.dev.dependencies]
-setuptools = ">=60"
-
-[tool.poetry.group.test.dependencies]
-pytest = "~8.3"
+[project.optional-dependencies]
+dev = [
+    # "setuptools>=60"
+]
+test = [
+    "pytest~=8.3"
+]
 
 [build-system]
-requires = ["poetry-core>=2.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.7.8,<0.8.0"]
+build-backend = "uv_build"
 
+[tool.uv.build-backend]
+module-root = ""

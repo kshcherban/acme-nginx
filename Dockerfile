@@ -1,23 +1,19 @@
 FROM python:3.13 AS build
-
-WORKDIR /opt
-RUN pip install --no-cache-dir pyinstaller setuptools
-COPY . /opt
-RUN pip wheel -r requirements.txt
-RUN pip install --no-cache-dir -r /opt/requirements.txt && \
-    python setup.py install && \
-    pyinstaller -sF ./acme-runner.py
-
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:0.7.8 /uv /uvx /bin/
+WORKDIR /code
+# Set uv environment variables for production
+ENV UV_PROJECT_ENVIRONMENT=/code/.venv
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
+# Copy code
+COPY . .
+# Install dependencies
+RUN uv sync --frozen --no-dev --no-editable
 
 FROM python:3.13-slim
-
-COPY --from=build /opt /opt
-
-WORKDIR /opt
-RUN pip install --no-cache-dir setuptools && \
-    pip install --no-cache-dir -r /opt/requirements.txt -f /opt && \
-    python setup.py install && \
-    cp dist/acme-runner /usr/bin/ && \
-    rm -rf /opt/* /root/.cache
-
-ENTRYPOINT ["/usr/local/bin/acme-nginx"]
+# Copy the virtual environment from build stage
+COPY --from=build /code/.venv /code/.venv
+# Set PATH to use virtual environment
+ENV PATH="/code/.venv/bin:$PATH"
+ENTRYPOINT ["acme-nginx"]

@@ -77,15 +77,14 @@ Is deprecated and not supported by LetsEncrypt anymore, so it was removed from t
 
 ### Preferred way
 
-Using [poetry](https://python-poetry.org/). 
+Using [uv](https://github.com/astral-sh/uv). 
 
-1. First [install](https://python-poetry.org/docs/) poetry:
+1. First [install](https://docs.astral.sh/uv/getting-started/installation/) uv:
 
    ```bash
-   curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3 -
-   source ~/.poetry/env
+   curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
-
+   
 2. Clone acme-nginx:
 
    ```bash
@@ -96,7 +95,7 @@ Using [poetry](https://python-poetry.org/).
 
    ```bash
    cd acme-nginx
-   poetry install
+   uv run acme-nginx
    ```
 
 ### Python pip way
@@ -104,13 +103,6 @@ Using [poetry](https://python-poetry.org/).
 Automatically
 ```
 pip3 install acme-nginx
-```
-
-or manually
-```
-git clone https://github.com/kshcherban/acme-nginx
-cd acme-nginx
-python setup.py install
 ```
 
 ### Docker way
@@ -123,28 +115,7 @@ docker run --rm -v /etc/nginx:/etc/nginx --pid=host \
 	-d example.com -d www.example.com
 ```
 
-There is also single binary in docker image compiled by `pyinstaller` , you can copy it like this:
 
-```
-docker run --name acme acme-nginx
-docker cp acme:/usr/bin/acme-runner acme-nginx
-docker rm acme
-```
-
-### Debian/Ubuntu way
-
-```
-sudo apt-get install -y python-openssl python-crypto python-setuptools
-sudo python setup.py install
-```
-
-### CentOS/RedHat/Fedora way
-
-```
-sudo yum install -y pyOpenSSL python-crypto python-setuptools
-sudo yum groupinstall -y "Development tools"
-sudo python setup.py install
-```
 
 ## Usage
 
