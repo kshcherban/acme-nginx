@@ -15,7 +15,7 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from urllib.request import urlopen, Request
 
 
-__version__ = "0.4.2"
+__version__ = "0.5.0"
 
 
 class Acme(object):
@@ -24,7 +24,7 @@ class Acme(object):
         api_url,
         logger,
         domains=None,
-        vhost="/etc/nginx/sites-enabled/0-letsencrypt.conf",
+        vhost="/etc/nginx/conf.d/0-letsencrypt.conf",
         account_key="/etc/ssl/private/letsencrypt-account.key",
         domain_key="/etc/ssl/private/letsencrypt-domain.key",
         cert_path="/etc/ssl/private/letsencrypt-domain.pem",
