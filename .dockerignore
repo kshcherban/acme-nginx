@@ -3,8 +3,8 @@
 .env
 dist/
 tests/
-__pycache__/
-*.py[cod]
+**/__pycache__/
+**/*.py[cod]
 Dockerfile
 .pytest_cache
 .gitignore
