@@ -6,9 +6,11 @@ WORKDIR /code
 ENV UV_PROJECT_ENVIRONMENT=/code/.venv
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
-# Copy code
-COPY . .
 # Install dependencies
+COPY pyproject.toml uv.lock .
+RUN uv sync --frozen --no-dev --no-editable --no-install-project --no-build
+# Install project
+COPY . .
 RUN uv sync --frozen --no-dev --no-editable
 
 FROM python:3.13-slim
