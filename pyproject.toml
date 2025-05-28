@@ -1,6 +1,6 @@
 [project]
 name = "acme-nginx"
-version = "0.4.2"
+version = "0.5.0"
 # TODO: Use dynamic versioning when uv supports it
 # dynamic = ["version"]
 description = "Python library/program to create LetsEncrypt SSL certificates"

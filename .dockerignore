@@ -1,0 +1,11 @@
+.git
+.venv
+.env
+dist/
+tests/
+__pycache__/
+*.py[cod]
+Dockerfile
+.pytest_cache
+.gitignore
+LICENSE.txt

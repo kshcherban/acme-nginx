@@ -117,6 +117,11 @@ docker run --rm -v /etc/nginx:/etc/nginx --pid=host \
 
 
 
+### Generate requirements
+
+You can generate requirements.txt file with uv like: 
+`uv export --no-hashes --no-emit-workspace > requirements.txt`
+
 ## Usage
 
 Simplest scenario: you have neither letsencrypt [account key](https://letsencrypt.org/docs/account-id/) nor domain key and want to generate
@@ -134,16 +139,16 @@ Oct 12 23:42:17 Trying to register account key
 Oct 12 23:42:18 Registered!
 Oct 12 23:42:18 Requesting challenge
 Oct 12 23:42:19 Adding nginx virtual host and completing challenge
-Oct 12 23:42:19 Creating file /etc/nginx/sites-enabled/letsencrypt
+Oct 12 23:42:19 Creating file /etc/nginx/conf.d/0-letsencrypt.conf
 Oct 12 23:42:21 example.com verified!
 Oct 12 23:42:21 Requesting challenge
 Oct 12 23:42:21 Adding nginx virtual host and completing challenge
-Oct 12 23:42:21 Creating file /etc/nginx/sites-enabled/letsencrypt
+Oct 12 23:42:21 Creating file /etc/nginx/conf.d/0-letsencrypt.conf
 Oct 12 23:42:23 www.example.com verified!
 Oct 12 23:42:23 Signing certificate
 Oct 12 23:42:23 Certificate signed!
 Oct 12 23:42:23 Writing result file in /etc/ssl/private/letsencrypt-domain.pem
-Oct 12 23:42:23 Removing /etc/nginx/sites-enabled/letsencrypt and sending HUP to nginx
+Oct 12 23:42:23 Removing /etc/nginx/conf.d/0-letsencrypt.conf and sending HUP to nginx
 ```
 
 Certificate was generated into `/etc/ssl/private/letsencrypt-domain.pem`
@@ -166,7 +171,7 @@ More complicated scenario: you have both account, domain keys and custom virtual
 sudo acme-nginx \
     -k /path/to/account.key \
     --domain-private-key /path/to/domain.key \
-    --virtual-host /etc/nginx/sites-enabled/customvhost \
+    --virtual-host /etc/nginx/conf.d/customvhost \
     -o /path/to/signed_certificate.pem \
     -d example.com -d www.example.com
 ```
@@ -208,8 +213,8 @@ acme-nginx --dns-provider cloudflare -d '*.example.com'
 ### Debug
 
 To debug please use `--debug` flag. With debug enabled all intermediate files
-will not be removed, so you can check `/etc/nginx/sites-enabled` for temporary
-virtual host configuration, by default it's `/etc/nginx/sites-enabled/0-letsencrypt.conf`.
+will not be removed, so you can check `/etc/nginx/conf.d` for temporary
+virtual host configuration, by default it's `/etc/nginx/conf.d/0-letsencrypt.conf`.
 
 Execute `acme-nginx --help` to see all available flags and their default values.
 
